@@ -6,9 +6,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.Temporal;
 import java.util.Optional;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 class Life {
@@ -17,20 +15,29 @@ class Life {
     private volatile State state = State.ALIVE;
 
     private final AtomicReference<Optional<Timeout>> timeout = new AtomicReference<>(Optional.empty());
+    private final CompletableFuture<Ding> cancel = new CompletableFuture<>();
+    private final CompletableFuture<Ding> finished = new CompletableFuture<>();
 
     Life(Optional<Life> parent) {
         this.parent = parent;
-    }
-
-    void cancel() {
-        if (state == State.ALIVE) {
-            state = State.CANCELLED;
+        if (parent.isPresent()) {
+            Life plife = parent.get();
+            plife.whenCanceled().thenAccept(cancel::complete);
+            plife.whenFinished().thenAccept(finished::complete);
         }
     }
 
-    void finish() {
+    void cancel(Ding canceledDing) {
+        if (state == State.ALIVE) {
+            state = State.CANCELLED;
+            cancel.complete(canceledDing);
+        }
+    }
+
+    void finish(Ding finishedDing) {
         if (state == State.ALIVE) {
             state = State.FINISHED;
+            finished.complete(finishedDing);
         }
     }
 
@@ -46,22 +53,31 @@ class Life {
         return state == State.ALIVE || parent.map(Life::isAlive).orElse(false);
     }
 
-    void startTimeout(Duration duration, ScheduledExecutorService scheduler) {
-        ScheduledFuture<?> future = scheduler.schedule((Runnable) this::cancel,
+    void startTimeout(Ding timerDing, Duration duration, ScheduledExecutorService scheduler) {
+        ScheduledFuture<?> future = scheduler.schedule(() -> cancel(timerDing),
                                                        duration.getNano(),
                                                        TimeUnit.NANOSECONDS);
         Timeout t = new TimeoutBuilder().future(future)
                                         .finishAt(duration.addTo(Instant.now()))
                                         .build();
         Optional<Timeout> old = timeout.getAndSet(Optional.of(t));
+
+        // try to cancel as we are replacing the timeout, best effort
         if (old.isPresent()) {
-            // try to cancel as we are replacing the timeout, best effort
             old.get().future().cancel(false);
         }
     }
 
     Optional<Duration> timeRemaining() {
         return timeout.get().map((d) -> Duration.between(Instant.now(), d.finishAt()));
+    }
+
+    public CompletionStage<Ding> whenCanceled() {
+        return cancel;
+    }
+
+    public CompletionStage<Ding> whenFinished() {
+        return finished;
     }
 
     private enum State {

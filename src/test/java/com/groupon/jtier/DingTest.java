@@ -1,7 +1,5 @@
 package com.groupon.jtier;
 
-import com.google.common.base.Stopwatch;
-import com.google.common.base.Ticker;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

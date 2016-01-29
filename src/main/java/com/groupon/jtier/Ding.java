@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ScheduledExecutorService;
 
 public class Ding implements AutoCloseable {
@@ -22,11 +23,11 @@ public class Ding implements AutoCloseable {
     }
 
     public void cancel() {
-        life.cancel();
+        life.cancel(this);
     }
 
     public void finish() {
-        life.finish();
+        life.finish(this);
     }
 
     public boolean isCancelled() {
@@ -114,11 +115,19 @@ public class Ding implements AutoCloseable {
     }
 
     public void startTimeout(Duration duration, ScheduledExecutorService scheduler) {
-        life.startTimeout(duration, scheduler);
+        life.startTimeout(this, duration, scheduler);
     }
 
     public Optional<Duration> getApproximateTimeRemaining() {
         return life.timeRemaining();
+    }
+
+    public CompletionStage<Ding> whenCancelled() {
+        return life.whenCanceled();
+    }
+
+    public CompletionStage<Ding> whenFinished() {
+        return life.whenFinished();
     }
 
     public static final class Key<T> {
