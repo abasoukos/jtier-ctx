@@ -3,64 +3,88 @@ package com.groupon.jtier;
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableMap;
 
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ScheduledExecutorService;
 
 public class Ding implements AutoCloseable {
 
-    private static final Ding BACKGROUND = new Ding(Optional.empty(), ImmutableMap.of(), false);
-    private static final ThreadLocal<Ding> CURRENT = ThreadLocal.withInitial(Ding::empty);
+    private static final ThreadLocal<Optional<Ding>> INFECTION = ThreadLocal.withInitial(Optional::empty);
 
-    private final ImmutableMap<Key<?>, Object> values;
-    private final transient Optional<Ding> parent;
-    private final boolean global;
+    private final Life life;
+    private final Map<Key<?>, Object> values;
 
-    /**
-     * TODO Parent is to be used for lifecycle only, it should be refactored away once ding lifecycle is grokked better
-     */
-    private Ding(Optional<Ding> parent, ImmutableMap<Key<?>, Object> values, boolean infected) {
-        this.parent = parent;
+    private Ding(Life life, Map<Key<?>, Object> values) {
+        this.life = life;
         this.values = values;
-        this.global = infected;
-        // TODO hook into lifecycle notifications of parent
+    }
+
+    public void cancel() {
+        life.cancel();
+    }
+
+    public void finish() {
+        life.finish();
+    }
+
+    public boolean isCancelled() {
+        return life.isCancelled();
+    }
+
+    public boolean isFinished() {
+        return life.isFinished();
+    }
+
+    public boolean isAlive() {
+        return life.isAlive();
     }
 
     public static Ding empty() {
-        return BACKGROUND;
+        return new Ding(new Life(Optional.empty()), ImmutableMap.of());
     }
 
-    public Ding infect() {
-        Ding child = new Ding(Optional.of(this), values, true);
-        CURRENT.set(child);
-        return child;
+    public Ding infectThread() {
+        INFECTION.set(Optional.of(this));
+        return this;
     }
 
+    /**
+     * alias for this.disinfect() to implement AutoCloseable
+     */
     public void close() {
-        if (global) {
-            CURRENT.set(this.parent.get());
-        }
-        else {
-            throw new IllegalStateException("No thread local ding to close!");
-        }
+        disinfect();
     }
 
-    public static Ding summonThreadContext() {
-        if (CURRENT.get().global) {
-            return CURRENT.get();
-        }
-        else {
-            throw new IllegalStateException("No thread local ding has been opened!");
-        }
+    /**
+     * Un-infect the thread
+     */
+    public void disinfect() {
+        INFECTION.set(Optional.empty());
+    }
+
+    public static Optional<Ding> summonThreadContext() {
+        return INFECTION.get();
     }
 
     public <T> Ding with(Key<T> key, T value) {
-        ImmutableMap<Key<?>, Object> next = ImmutableMap.<Key<?>, Object>builder().putAll(values)
-                                                                                  .put(key, value)
-                                                                                  .build();
-        Ding child = new Ding(Optional.of(this), next, global);
-        if (global) {
-            CURRENT.set(child);
+        Map<Key<?>, Object> next = new HashMap<>();
+        next.putAll(this.values);
+        next.put(key, value);
+
+        Ding child = new Ding(life, next);
+        if (isCurrentThreadInfected()) {
+            return child.infectThread();
         }
-        return child;
+        else {
+            return child;
+        }
+    }
+
+    public Ding createChild() {
+        // TODO create new notification channel
+        return new Ding(new Life(Optional.of(life)), values);
     }
 
     public <T> T get(Key<T> key) {
@@ -72,18 +96,29 @@ public class Ding implements AutoCloseable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Ding ding = (Ding) o;
-        return global == ding.global &&
-                Objects.equal(values, ding.values) &&
-                Objects.equal(parent, ding.parent);
+        return Objects.equal(life, ding.life) &&
+                Objects.equal(values, ding.values);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(values, parent, global);
+        return Objects.hashCode(life, values);
     }
 
     public static <T> Key<T> key(String name, Class<T> type) {
         return new Key<>(type, name);
+    }
+
+    public static boolean isCurrentThreadInfected() {
+        return INFECTION.get().isPresent();
+    }
+
+    public void startTimeout(Duration duration, ScheduledExecutorService scheduler) {
+        life.startTimeout(duration, scheduler);
+    }
+
+    public Optional<Duration> getApproximateTimeRemaining() {
+        return life.timeRemaining();
     }
 
     public static final class Key<T> {
