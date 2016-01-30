@@ -10,11 +10,11 @@ import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ScheduledExecutorService;
 
-public class Ding {
+public class Ctx {
     private final Life life;
     private final Map<Key<?>, Object> values;
 
-    private Ding(Life life, Map<Key<?>, Object> values) {
+    private Ctx(Life life, Map<Key<?>, Object> values) {
         this.life = life;
         this.values = values;
     }
@@ -39,28 +39,32 @@ public class Ding {
         return life.isAlive();
     }
 
-    public static Ding empty() {
-        return new Ding(new Life(Optional.empty()), ImmutableMap.of());
+    public static Ctx empty() {
+        return new Ctx(new Life(Optional.empty()), ImmutableMap.of());
     }
 
-    public Attachment attachToThread() {
-        return Attachment.attachToThread(this);
+    public static Optional<Ctx> fromInfectedThread() {
+        return Infection.currentCtx();
     }
 
-    public <T> Ding with(Key<T> key, T value) {
+    public Infection attachToThread() {
+        return Infection.infectThread(this);
+    }
+
+    public <T> Ctx with(Key<T> key, T value) {
         Map<Key<?>, Object> next = new HashMap<>();
         next.putAll(this.values);
         next.put(key, value);
 
-        Ding child = new Ding(life, next);
-        if (Attachment.isCurrentThreadAttached()) {
-            Attachment.update(child);
+        Ctx child = new Ctx(life, next);
+        if (Infection.isCurrentThreadInfected()) {
+            Infection.update(child);
         }
         return child;
     }
 
-    public Ding createChild() {
-        return new Ding(new Life(Optional.of(life)), values);
+    public Ctx createChild() {
+        return new Ctx(new Life(Optional.of(life)), values);
     }
 
     public <T> Optional<T> get(Key<T> key) {
@@ -76,9 +80,9 @@ public class Ding {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Ding ding = (Ding) o;
-        return Objects.equal(life, ding.life) &&
-                Objects.equal(values, ding.values);
+        Ctx ctx = (Ctx) o;
+        return Objects.equal(life, ctx.life) &&
+                Objects.equal(values, ctx.values);
     }
 
     @Override
@@ -94,11 +98,11 @@ public class Ding {
         return life.timeRemaining();
     }
 
-    public CompletionStage<Ding> whenCancelled() {
+    public CompletionStage<Ctx> whenCancelled() {
         return life.whenCanceled();
     }
 
-    public CompletionStage<Ding> whenFinished() {
+    public CompletionStage<Ctx> whenFinished() {
         return life.whenFinished();
     }
 

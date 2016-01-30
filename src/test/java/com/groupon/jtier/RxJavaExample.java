@@ -18,7 +18,7 @@ public class RxJavaExample {
     public void testUnsubscribeOnCancel() throws Exception {
         TestScheduler ticker = Schedulers.test();
 
-        Ding ding = Ding.empty();
+        Ctx ctx = Ctx.empty();
 
         AtomicBoolean failed = new AtomicBoolean(false);
         AtomicBoolean completed = new AtomicBoolean(false);
@@ -31,7 +31,7 @@ public class RxJavaExample {
                                       () -> completed.set(true));
 
         // unsubscribe when currentExchange is cancelled
-        ding.whenCancelled().thenRun(s::unsubscribe);
+        ctx.whenCancelled().thenRun(s::unsubscribe);
 
         // receive first event
         ticker.advanceTimeBy(10, TimeUnit.MILLISECONDS);
@@ -44,7 +44,7 @@ public class RxJavaExample {
         assertThat(counter.get()).isEqualTo(2);
 
         // should led to unsubscribe, not receive future elements
-        ding.cancel();
+        ctx.cancel();
 
         // advance time enough to trigger third event, but we should not get it
         ticker.advanceTimeBy(10, TimeUnit.MILLISECONDS);

@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class OkHttpExample {
 
-    private static final Ding.Key<UUID> REQUEST_ID = Ding.key("X-Request-Id", UUID.class);
+    private static final Ctx.Key<UUID> REQUEST_ID = Ctx.key("X-Request-Id", UUID.class);
 
     @Rule
     public MockWebServer web = new MockWebServer();
@@ -39,7 +39,7 @@ public class OkHttpExample {
 
         UUID id = UUID.randomUUID();
 
-        try (Attachment _i = Ding.empty().with(REQUEST_ID, id).attachToThread()) {
+        try (Infection _i = Ctx.empty().with(REQUEST_ID, id).attachToThread()) {
             Call call = ok.newCall(new Request.Builder().url(web.url("/")).build());
             Response response = call.execute();
             assertThat(response.code()).isEqualTo(200);
@@ -55,8 +55,8 @@ public class OkHttpExample {
         public Response intercept(Chain chain) throws IOException {
             Request req = chain.request();
 
-            if (Attachment.isCurrentThreadAttached()) {
-                Ding ctx = Attachment.currentExchange().get();
+            if (Infection.isCurrentThreadInfected()) {
+                Ctx ctx = Infection.currentCtx().get();
                 UUID reqid = ctx.get(REQUEST_ID).get();
                 if (reqid != null) {
                     req = req.newBuilder()

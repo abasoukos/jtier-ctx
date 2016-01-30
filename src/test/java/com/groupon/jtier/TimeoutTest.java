@@ -15,23 +15,23 @@ public class TimeoutTest {
     public void testTimeoutCancels() throws Exception {
         ClockedExecutorService clock = new ClockedExecutorService();
 
-        Ding ding = Ding.empty();
-        ding.startTimeout(Duration.ofMillis(100), clock);
+        Ctx ctx = Ctx.empty();
+        ctx.startTimeout(Duration.ofMillis(100), clock);
 
         clock.advance(102, TimeUnit.MILLISECONDS);
 
-        assertThat(ding.isCancelled()).isTrue();
+        assertThat(ctx.isCancelled()).isTrue();
     }
 
     @Test
     public void testTimeRemaining() throws Exception {
         ClockedExecutorService clock = new ClockedExecutorService();
 
-        Ding ding = Ding.empty();
-        ding.startTimeout(Duration.ofMillis(100), clock);
+        Ctx ctx = Ctx.empty();
+        ctx.startTimeout(Duration.ofMillis(100), clock);
 
         Thread.sleep(10);
-        Optional<Duration> tr = ding.getApproximateTimeRemaining();
+        Optional<Duration> tr = ctx.getApproximateTimeRemaining();
         assertThat(tr).isPresent();
         Duration d = tr.get();
 

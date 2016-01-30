@@ -15,8 +15,8 @@ class Life {
     private volatile State state = State.ALIVE;
 
     private final AtomicReference<Optional<Timeout>> timeout = new AtomicReference<>(Optional.empty());
-    private final CompletableFuture<Ding> cancel = new CompletableFuture<>();
-    private final CompletableFuture<Ding> finished = new CompletableFuture<>();
+    private final CompletableFuture<Ctx> cancel = new CompletableFuture<>();
+    private final CompletableFuture<Ctx> finished = new CompletableFuture<>();
 
     Life(Optional<Life> parent) {
         this.parent = parent;
@@ -27,17 +27,17 @@ class Life {
         }
     }
 
-    void cancel(Ding canceledDing) {
+    void cancel(Ctx canceledCtx) {
         if (state == State.ALIVE) {
             state = State.CANCELLED;
-            cancel.complete(canceledDing);
+            cancel.complete(canceledCtx);
         }
     }
 
-    void finish(Ding finishedDing) {
+    void finish(Ctx finishedCtx) {
         if (state == State.ALIVE) {
             state = State.FINISHED;
-            finished.complete(finishedDing);
+            finished.complete(finishedCtx);
         }
     }
 
@@ -53,8 +53,8 @@ class Life {
         return state == State.ALIVE || parent.map(Life::isAlive).orElse(false);
     }
 
-    void startTimeout(Ding timerDing, Duration duration, ScheduledExecutorService scheduler) {
-        ScheduledFuture<?> future = scheduler.schedule(() -> cancel(timerDing),
+    void startTimeout(Ctx timerCtx, Duration duration, ScheduledExecutorService scheduler) {
+        ScheduledFuture<?> future = scheduler.schedule(() -> cancel(timerCtx),
                                                        duration.getNano(),
                                                        TimeUnit.NANOSECONDS);
         Timeout t = new TimeoutBuilder().future(future)
@@ -72,11 +72,11 @@ class Life {
         return timeout.get().map((d) -> Duration.between(Instant.now(), d.finishAt()));
     }
 
-    public CompletionStage<Ding> whenCanceled() {
+    public CompletionStage<Ctx> whenCanceled() {
         return cancel;
     }
 
-    public CompletionStage<Ding> whenFinished() {
+    public CompletionStage<Ctx> whenFinished() {
         return finished;
     }
 
