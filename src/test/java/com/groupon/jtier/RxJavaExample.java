@@ -20,7 +20,6 @@ public class RxJavaExample {
 
         Ding ding = Ding.empty();
 
-
         AtomicBoolean failed = new AtomicBoolean(false);
         AtomicBoolean completed = new AtomicBoolean(false);
         AtomicInteger counter = new AtomicInteger();
@@ -34,23 +33,25 @@ public class RxJavaExample {
         // unsubscribe when ding is cancelled
         ding.whenCancelled().thenRun(s::unsubscribe);
 
+        // receive first event
         ticker.advanceTimeBy(10, TimeUnit.MILLISECONDS);
         ticker.triggerActions();
         assertThat(counter.get()).isEqualTo(1);
 
+        // receive second event
         ticker.advanceTimeBy(10, TimeUnit.MILLISECONDS);
         ticker.triggerActions();
-
         assertThat(counter.get()).isEqualTo(2);
 
-        // should led to unsubscribe
+        // should led to unsubscribe, not receive future elements
         ding.cancel();
 
+        // advance time enough to trigger third event, but we should not get it
         ticker.advanceTimeBy(10, TimeUnit.MILLISECONDS);
         ticker.triggerActions();
-
         assertThat(counter.get()).isEqualTo(2);
 
+        // verify it was not completed or failed
         assertThat(completed.get()).isFalse();
         assertThat(failed.get()).isFalse();
     }
