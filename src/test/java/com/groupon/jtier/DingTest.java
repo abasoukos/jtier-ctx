@@ -22,47 +22,47 @@ public class DingTest {
     public void testExplicitThreadLocalInfection() throws Exception {
         Ding root = Ding.empty();
 
-        try (Ding child = root.infectThread()) {
-            assertThat(Ding.isCurrentThreadInfected()).isTrue();
+        try (Infection i = root.infectThread()) {
+            assertThat(Infection.isCurrentThreadInfected()).isTrue();
 
-            assertThat(Ding.summonThreadContext()).isPresent();
+            assertThat(Infection.ding()).isPresent();
 
-            Ding magic = Ding.summonThreadContext().get();
+            Ding magic = Infection.ding().get();
 
-            assertThat(magic).isEqualTo(child);
+            assertThat(magic).isEqualTo(i.getDing());
         }
 
-        assertThat(Ding.isCurrentThreadInfected()).isFalse();
+        assertThat(Infection.isCurrentThreadInfected()).isFalse();
     }
 
     @Test
     public void testInfectionIsContagious() throws Exception {
-        try (Ding child = Ding.empty().infectThread()) {
-            child.with(NAME, "Brian");
+        try (Infection child = Ding.empty().infectThread()) {
+            child.getDing().with(NAME, "Brian");
 
-            assertThat(Ding.summonThreadContext().get().get(NAME)).isEqualTo("Brian");
+            assertThat(Infection.ding().get().get(NAME)).isEqualTo("Brian");
         }
     }
 
     @Test
     public void testThreadLocalNotAllowedWithoutInject() throws Exception {
-        assertThat(Ding.summonThreadContext()).isEmpty();
+        assertThat(Infection.ding()).isEmpty();
     }
 
     @Test
     public void testDoubleInfection() throws Exception {
-        try (Ding _child = Ding.empty().infectThread()) {
-            try (Ding grand = _child.infectThread()) {
-                grand.with(NAME, "Ian");
+        try (Infection i = Ding.empty().infectThread()) {
+            try (Infection i2 = i.getDing().infectThread()) {
+                i2.getDing().with(NAME, "Ian");
 
-                assertThat(Ding.summonThreadContext().get().get(NAME)).isEqualTo("Ian");
+                assertThat(Infection.ding().get().get(NAME)).isEqualTo("Ian");
             }
             // closing dis-infects the thread, period
-            assertThat(Ding.isCurrentThreadInfected()).isFalse();
+            assertThat(Infection.isCurrentThreadInfected()).isFalse();
 
         }
 
-        assertThat(Ding.isCurrentThreadInfected()).isFalse();
+        assertThat(Infection.isCurrentThreadInfected()).isFalse();
     }
 
     @Test

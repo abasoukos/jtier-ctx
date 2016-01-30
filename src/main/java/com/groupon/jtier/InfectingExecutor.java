@@ -45,10 +45,10 @@ public class InfectingExecutor extends AbstractExecutorService {
 
     @Override
     public void execute(Runnable command) {
-        final Optional<Ding> infection = Ding.summonThreadContext();
-        if (infection.isPresent()) {
+        if (Infection.isCurrentThreadInfected()) {
+            Infection infection = Infection.get().get();
             target.execute(() -> {
-                try (Ding _d = infection.get().infectThread()) {
+                try (Infection _i = infection.getDing().infectThread()) {
                     command.run();
                 }
             });

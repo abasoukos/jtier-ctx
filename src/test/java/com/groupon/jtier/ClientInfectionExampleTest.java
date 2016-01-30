@@ -49,7 +49,7 @@ public class ClientInfectionExampleTest {
 
         UUID id = UUID.randomUUID();
 
-        try (Ding _d = Ding.empty().with(REQUEST_ID, id).infectThread()) {
+        try (Infection _i = Ding.empty().with(REQUEST_ID, id).infectThread()) {
             Call call = ok.newCall(new Request.Builder().url(web.url("/")).build());
             Response response = call.execute();
             assertThat(response.code()).isEqualTo(200);
@@ -59,52 +59,14 @@ public class ClientInfectionExampleTest {
 
     }
 
-    @Test
-    @Ignore
-    public void testExplicitOkCancellation() throws Exception {
-        web.enqueue(new MockResponse().setBody("hello world")
-                                      .setResponseCode(200)
-                                      .setBodyDelay(2, TimeUnit.SECONDS)
-                                      .addHeader("Content-Type", "text/plain"));
-
-        final CountDownLatch latch = new CountDownLatch(1);
-        final AtomicBoolean failed = new AtomicBoolean(false);
-        final AtomicBoolean completed = new AtomicBoolean(false);
-        try (Ding d = Ding.empty().infectThread()) {
-            Call call = ok.newCall(new Request.Builder().url(web.url("/")).build());
-
-            call.enqueue(new Callback() {
-                @Override
-                public void onFailure(Call call, IOException e) {
-                    failed.set(true);
-                    latch.countDown();
-                }
-
-                @Override
-                public void onResponse(Call call, Response response) throws IOException {
-                    completed.set(true);
-                    latch.countDown();
-                }
-            });
-
-            d.whenCancelled().thenRun(call::cancel);
-
-            d.cancel();
-        }
-
-        latch.await(1, TimeUnit.SECONDS);
-        assertThat(failed.get()).isTrue();
-        assertThat(completed.get()).isFalse();
-    }
-
     public static class ExampleInterceptor implements Interceptor {
 
         @Override
         public Response intercept(Chain chain) throws IOException {
             Request req = chain.request();
 
-            if (Ding.isCurrentThreadInfected()) {
-                Ding ctx = Ding.summonThreadContext().get();
+            if (Infection.isCurrentThreadInfected()) {
+                Ding ctx = Infection.ding().get();
                 UUID reqid = ctx.get(REQUEST_ID);
                 if (reqid != null) {
                     req = req.newBuilder()
