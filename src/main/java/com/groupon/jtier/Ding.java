@@ -63,8 +63,13 @@ public class Ding {
         return new Ding(new Life(Optional.of(life)), values);
     }
 
-    public <T> T get(Key<T> key) {
-        return key.cast(values.get(key));
+    public <T> Optional<T> get(Key<T> key) {
+        if (values.containsKey(key)) {
+            return Optional.of(key.cast(values.get(key)));
+        }
+        else {
+            return Optional.empty();
+        }
     }
 
     @Override
@@ -81,10 +86,6 @@ public class Ding {
         return Objects.hashCode(life, values);
     }
 
-    public static <T> Key<T> key(String name, Class<T> type) {
-        return new Key<>(type, name);
-    }
-
     public void startTimeout(Duration duration, ScheduledExecutorService scheduler) {
         life.startTimeout(this, duration, scheduler);
     }
@@ -99,6 +100,10 @@ public class Ding {
 
     public CompletionStage<Ding> whenFinished() {
         return life.whenFinished();
+    }
+
+    public static <T> Key<T> key(String name, Class<T> type) {
+        return new Key<>(type, name);
     }
 
     public static final class Key<T> {

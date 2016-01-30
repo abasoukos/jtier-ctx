@@ -57,10 +57,10 @@ public class OkHttpExample {
 
             if (Infection.isCurrentThreadInfected()) {
                 Ding ctx = Infection.ding().get();
-                UUID reqid = ctx.get(REQUEST_ID);
+                UUID reqid = ctx.get(REQUEST_ID).get();
                 if (reqid != null) {
                     req = req.newBuilder()
-                             .addHeader("X-Request-Id", ctx.get(REQUEST_ID).toString())
+                             .addHeader("X-Request-Id", ctx.get(REQUEST_ID).get().toString())
                              .build();
                 }
             }
