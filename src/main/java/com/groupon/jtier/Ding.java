@@ -43,8 +43,8 @@ public class Ding {
         return new Ding(new Life(Optional.empty()), ImmutableMap.of());
     }
 
-    public Infection infectThread() {
-        return Infection.infectThread(this);
+    public Attachment attachToThread() {
+        return Attachment.attachToThread(this);
     }
 
     public <T> Ding with(Key<T> key, T value) {
@@ -53,8 +53,8 @@ public class Ding {
         next.put(key, value);
 
         Ding child = new Ding(life, next);
-        if (Infection.isCurrentThreadInfected()) {
-            Infection.update(child);
+        if (Attachment.isCurrentThreadAttached()) {
+            Attachment.update(child);
         }
         return child;
     }

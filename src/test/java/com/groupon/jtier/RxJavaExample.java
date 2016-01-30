@@ -30,7 +30,7 @@ public class RxJavaExample {
                                       (e) -> failed.set(true),
                                       () -> completed.set(true));
 
-        // unsubscribe when ding is cancelled
+        // unsubscribe when currentExchange is cancelled
         ding.whenCancelled().thenRun(s::unsubscribe);
 
         // receive first event

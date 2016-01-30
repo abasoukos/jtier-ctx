@@ -16,8 +16,8 @@ public class LoggingExample {
     @Test
     public void testDiagnosticContextOnInfection() throws Exception {
 
-        try (Infection i = Ding.empty().infectThread()) {
-            i.whenCured().thenRun(MDC::clear);
+        try (Attachment i = Ding.empty().attachToThread()) {
+            i.whenDetached().thenRun(MDC::clear);
 
             MDC.put("name", "grumbly");
             Logger logger = LoggerFactory.getLogger(LoggingExample.class);

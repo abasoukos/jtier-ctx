@@ -24,7 +24,7 @@ public class OkHttpExample {
 
     @Before
     public void setUp() throws Exception {
-        Dispatcher d = new Dispatcher(InfectingExecutor.infect(Executors.newCachedThreadPool()));
+        Dispatcher d = new Dispatcher(AttachingExecutor.infect(Executors.newCachedThreadPool()));
         ok = new OkHttpClient.Builder()
                 .dispatcher(d)
                 .addInterceptor(new ExampleInterceptor())
@@ -39,7 +39,7 @@ public class OkHttpExample {
 
         UUID id = UUID.randomUUID();
 
-        try (Infection _i = Ding.empty().with(REQUEST_ID, id).infectThread()) {
+        try (Attachment _i = Ding.empty().with(REQUEST_ID, id).attachToThread()) {
             Call call = ok.newCall(new Request.Builder().url(web.url("/")).build());
             Response response = call.execute();
             assertThat(response.code()).isEqualTo(200);
@@ -55,8 +55,8 @@ public class OkHttpExample {
         public Response intercept(Chain chain) throws IOException {
             Request req = chain.request();
 
-            if (Infection.isCurrentThreadInfected()) {
-                Ding ctx = Infection.ding().get();
+            if (Attachment.isCurrentThreadAttached()) {
+                Ding ctx = Attachment.currentExchange().get();
                 UUID reqid = ctx.get(REQUEST_ID).get();
                 if (reqid != null) {
                     req = req.newBuilder()
