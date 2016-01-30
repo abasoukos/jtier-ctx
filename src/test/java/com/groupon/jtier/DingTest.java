@@ -14,8 +14,8 @@ public class DingTest {
         Ding root = Ding.empty();
         Ding child = root.with(NAME, "Brian");
 
-        assertThat(child.get(NAME)).isEqualTo("Brian");
-        assertThat(root.get(NAME)).isNull();
+        assertThat(child.get(NAME).get()).isEqualTo("Brian");
+        assertThat(root.get(NAME)).isEmpty();
     }
 
     @Test
@@ -40,7 +40,7 @@ public class DingTest {
         try (Infection child = Ding.empty().infectThread()) {
             child.getDing().with(NAME, "Brian");
 
-            assertThat(Infection.ding().get().get(NAME)).isEqualTo("Brian");
+            assertThat(Infection.ding().get().get(NAME).get()).isEqualTo("Brian");
         }
     }
 
@@ -55,7 +55,7 @@ public class DingTest {
             try (Infection i2 = i.getDing().infectThread()) {
                 i2.getDing().with(NAME, "Ian");
 
-                assertThat(Infection.ding().get().get(NAME)).isEqualTo("Ian");
+                assertThat(Infection.ding().get().get(NAME).get()).isEqualTo("Ian");
             }
             // closing dis-infects the thread, period
             assertThat(Infection.isCurrentThreadInfected()).isFalse();
