@@ -1,7 +1,6 @@
 package com.groupon.jtier;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;

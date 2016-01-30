@@ -4,26 +4,16 @@ import okhttp3.*;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
-import retrofit2.CallAdapter;
-import retrofit2.Retrofit;
-import retrofit2.RxJavaCallAdapterFactory;
-import rx.Observable;
 
 import java.io.IOException;
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Type;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ClientInfectionExampleTest {
+public class OkHttpExample {
 
     private static final Ding.Key<UUID> REQUEST_ID = Ding.key("X-Request-Id", UUID.class);
 
