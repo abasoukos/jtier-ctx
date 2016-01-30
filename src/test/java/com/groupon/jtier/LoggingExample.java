@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class LoggingExample {
 
     @Test
-    public void testFoo() throws Exception {
+    public void testDiagnosticContextOnInfection() throws Exception {
 
         try (Infection i = Ding.empty().infectThread()) {
             i.whenCured().thenRun(MDC::clear);
