@@ -10,10 +10,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ScheduledExecutorService;
 
-public class Ding implements AutoCloseable {
-
-    private static final ThreadLocal<Optional<Ding>> INFECTION = ThreadLocal.withInitial(Optional::empty);
-
+public class Ding {
     private final Life life;
     private final Map<Key<?>, Object> values;
 
@@ -46,27 +43,8 @@ public class Ding implements AutoCloseable {
         return new Ding(new Life(Optional.empty()), ImmutableMap.of());
     }
 
-    public Ding infectThread() {
-        INFECTION.set(Optional.of(this));
-        return this;
-    }
-
-    /**
-     * alias for this.disinfect() to implement AutoCloseable
-     */
-    public void close() {
-        disinfect();
-    }
-
-    /**
-     * Un-infect the thread
-     */
-    public void disinfect() {
-        INFECTION.set(Optional.empty());
-    }
-
-    public static Optional<Ding> summonThreadContext() {
-        return INFECTION.get();
+    public Infection infectThread() {
+        return Infection.infectThread(this);
     }
 
     public <T> Ding with(Key<T> key, T value) {
@@ -75,16 +53,13 @@ public class Ding implements AutoCloseable {
         next.put(key, value);
 
         Ding child = new Ding(life, next);
-        if (isCurrentThreadInfected()) {
-            return child.infectThread();
+        if (Infection.isCurrentThreadInfected()) {
+            Infection.update(child);
         }
-        else {
-            return child;
-        }
+        return child;
     }
 
     public Ding createChild() {
-        // TODO create new notification channel
         return new Ding(new Life(Optional.of(life)), values);
     }
 
@@ -108,10 +83,6 @@ public class Ding implements AutoCloseable {
 
     public static <T> Key<T> key(String name, Class<T> type) {
         return new Key<>(type, name);
-    }
-
-    public static boolean isCurrentThreadInfected() {
-        return INFECTION.get().isPresent();
     }
 
     public void startTimeout(Duration duration, ScheduledExecutorService scheduler) {
