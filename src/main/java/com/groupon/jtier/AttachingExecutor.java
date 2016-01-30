@@ -5,7 +5,7 @@ import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class AttachingExecutor extends AbstractExecutorService {
+class AttachingExecutor extends AbstractExecutorService {
 
     private final ExecutorService target;
 
@@ -44,10 +44,10 @@ public class AttachingExecutor extends AbstractExecutorService {
 
     @Override
     public void execute(Runnable command) {
-        if (Attachment.isCurrentThreadAttached()) {
-            Attachment infection = Attachment.get().get();
+        if (Infection.isCurrentThreadInfected()) {
+            Infection infection = Infection.getCurrentInfection().get();
             target.execute(() -> {
-                try (Attachment _i = infection.getDing().attachToThread()) {
+                try (Infection _i = infection.getCtx().attachToThread()) {
                     command.run();
                 }
             });

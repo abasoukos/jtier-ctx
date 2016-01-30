@@ -16,7 +16,7 @@ public class LoggingExample {
     @Test
     public void testDiagnosticContextOnInfection() throws Exception {
 
-        try (Attachment i = Ding.empty().attachToThread()) {
+        try (Infection i = Ctx.empty().attachToThread()) {
             i.whenDetached().thenRun(MDC::clear);
 
             MDC.put("name", "grumbly");

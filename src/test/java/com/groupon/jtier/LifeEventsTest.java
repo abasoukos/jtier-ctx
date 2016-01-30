@@ -12,7 +12,7 @@ public class LifeEventsTest {
 
     @Test
     public void testCancelEventFires() throws Exception {
-        Ding d = Ding.empty();
+        Ctx d = Ctx.empty();
         CountDownLatch latch = new CountDownLatch(1);
         AtomicBoolean canceled = new AtomicBoolean(false);
 
@@ -29,8 +29,8 @@ public class LifeEventsTest {
 
     @Test
     public void testCancelParentCancelsChildren() throws Exception {
-        Ding p = Ding.empty();
-        Ding c = p.createChild();
+        Ctx p = Ctx.empty();
+        Ctx c = p.createChild();
 
         CountDownLatch latch = new CountDownLatch(1);
         AtomicBoolean canceled = new AtomicBoolean(false);
@@ -49,7 +49,7 @@ public class LifeEventsTest {
 
     @Test
     public void testFinishEventFires() throws Exception {
-        Ding d = Ding.empty();
+        Ctx d = Ctx.empty();
         CountDownLatch latch = new CountDownLatch(1);
         AtomicBoolean canceled = new AtomicBoolean(false);
 
@@ -66,8 +66,8 @@ public class LifeEventsTest {
 
     @Test
     public void testFinishParentCancelsChildren() throws Exception {
-        Ding p = Ding.empty();
-        Ding c = p.createChild();
+        Ctx p = Ctx.empty();
+        Ctx c = p.createChild();
 
         CountDownLatch latch = new CountDownLatch(1);
         AtomicBoolean canceled = new AtomicBoolean(false);
