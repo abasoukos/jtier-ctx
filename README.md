@@ -1,3 +1,13 @@
-# jtier-ding
+# jtier-ctx
 
-A Ding is a request context, but we wanted a shorter word than `RequestContext`. Dings are primarily used to propagate context from an incoming request to outgoing requests in an RPC exchange -- for example, an HTTP request comes in with an `X-Request-Id` header, which should be propagated to all clients, added to a mapped diagnostic context for log 
+A `Ctx` is a request context, but we wanted a shorter word than `RequestContext` and `Context` by itself is too overloaded. A `Ctx` is primarily used to propagate context from an incoming request to outgoing requests, or various libraries such as logging or metrics, in an RPC exchange. For example, an HTTP request comes in with an `X-Request-Id` header, which should be propagated to all clients, added to a mapped diagnostic context for logs associated with RPC exchange.
+
+A `Ctx` (henceforth referred to as a context) has objects, usually data, associated with it via a typed `Key<T>`. This is the mechanism for propagating context within a process (say from incoming request to outgoing request). It will have some stndard mechanism to convert it to a map or such to put it into headers. Individual context objects are immutable, with associating a key creating a new context rather than mutating an existing one. This is designed to encourage thread safety and being explicit about passing them around.
+
+A context can be associated with a thread. This process is called infection because it is _not_ simply associating the current context with the thread, but associating all future mutations of contexts that happen on that thread with the thread (until the infection is cured). The infection process is designed for tunneling context through context-unaware libraries or code, it is a fallback, not a preferred means.
+
+Contexts have limited lifecycle support. Basically, they are ALIVE, CANCELLED, or FINISHED. A context starts ALIVE and can transition to either CANCELLED or FINISHED. You can register listeners with a context and those listeners will be notified when the context transitions state.
+
+There is deadline functionality associated with a context -- basically you can set a deadline, on a scheduled executor, which will cause the state to transition to CANCELLED if the deadline occurs before the context transitions to FINISHED. You can query the approximate time remaining until the deadline from the context (approximate because it is measured in nanoseconds, and some will elapse querying the time and reading it).
+
+Finally, a context is hierarchical. You can create a child context of a context and the children will share associated data (from the time of their creation) and lifecycle transitions (at any point) with the parent. A child can undergo lifecycle transitions independently of the parent, but a parent transitioning will also transition all children. This feature is to allow seperate contexts to be created to track child RPCs, or other independently cancellable activies, but be able to cancel or finish them from the root. 
