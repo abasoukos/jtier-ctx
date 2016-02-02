@@ -28,5 +28,45 @@ To resolve this dichotomy we have the infection concept. With infection, a threa
 
 Infection *is* a hack to allow implicit propagation that is right for 90% of the cases. If this behavior is wrong, explicit state propagation should be used. If this is impossible, a different global thread local can be created and the specific context instance needed can be set on it, though if you find yourself doing this there is something *very* strange with the approach.
 
+Finally, note that an `Infection` is `AutoCloseable` so can be used with try-with-resources. Given that infection is thread bound, this should be the normal way infection is used.
+
 # Using `Ctx`
+
+## Server Side
+
+- Propagate context at the earliest reasonable point from incoming requests into a `Ctx`. 
+- Prefer passing `Ctx` explicitely rather than infecting the current thread.
+- If explicit is not possible, infect the current thread and document that this happens!
+- Finish (`Ctx#finish`) requests when they are finished, to prevent scheduled cancellations from executing.
+
+## Clients
+
+- Propagate context onto outgoing requests at the latest reasonable point.
+- Prefer to receive `Ctx` explicitely rather than via infection.
+- Set request timeouts (via a deadline) on downstream calls based on SLA or time remaining, whichever is lower.
+- Hook into CANCEL and FINISH lifecycle hooks to free up resources and abort early when appropriate.
+
+# Features Missing Right Now
+
+## Data Serialization
+
+Require data be serializable to Map<String, String> for external propagation. This needs to be managed carefully so we don't wind up propagating too much, if folks take to abusing `Ctx` to be quasi-dynamic scoping.
+
+In order to support dumb data elements, we probably want to support serializers registered on the context or globally, as well as serialization-aware data types on keys. This allows a custom type to decide for itself how to serialize, and built in types to make use of registered serializers.
+
+Alternately, `jackson-datatype-ctx` though that seems overkill :-)
+
+# Possible Changes
+
+## Propagation of Dynamic Timeouts
+
+If a deadline is set on a request, we should pass that information downstream so that the target of an RPC can make use of that information to optimize their timeouts.
+
+Once this mechanism is determined, possibly just an `Timeout` header, consider detecting the header and scheduling cancellation appropriately at time of RPC receipt.
+
+## Plugin Data
+
+Expose lifecycle events to keys -- this makes data into fully lifecycle aware plugin type things. It would allow deadline and lifecycle to be plugins (if plugins could interact). Right now this seems to be over-eager generalization, but it might be useful if we find a third thing that would make use of it. Going down this path implies keys might only be types, not name and type, as they currently are.
+
+
 
