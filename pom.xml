@@ -16,6 +16,7 @@
 
     <properties>
         <basepom.buildnumber.configured>false</basepom.buildnumber.configured>
+        <pmd.failsOnError>false</pmd.failsOnError>
     </properties>
 
     <dependencies>
