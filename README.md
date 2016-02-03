@@ -20,7 +20,7 @@ They key thing is that lifecycle state (and triggers on that state change) and t
 
 # Infection, huh?
 
-There are two primary paths for propagating context, the first is purely explicit. In this model anything which needs context data must have it explicitely passed. The second is implicit via thread locals -- in this anything which needs context data pulls it from global thread locals.
+There are two primary paths for propagating context, the first is purely explicit. In this model anything which needs context data must have it explicitly passed. The second is implicit via thread locals -- in this anything which needs context data pulls it from global thread locals.
 
 Explicit propagation is generally preferred -- be explicit in what you need! Explicit propagation also allows for child contexts, and finer grained control over context within a thread (such as in event driven situations). However, explicit propagation can make many libraries and frameworks, which don't have baked in support for explicit context passing, awkward to use. In practice, we need some mechanism for implicit context passing, even if we prefer explicit propagation.
 
