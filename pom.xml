@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.groupon.jtier</groupId>
         <artifactId>jtier-basepom</artifactId>
-        <version>10</version>
+        <version>11</version>
     </parent>
 
     <artifactId>jtier-ctx</artifactId>
