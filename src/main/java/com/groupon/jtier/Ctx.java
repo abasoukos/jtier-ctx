@@ -44,11 +44,11 @@ public class Ctx {
     }
 
     public static Optional<Ctx> fromInfectedThread() {
-        return Infection.currentCtx();
+        return CtxAttachment.currentCtx();
     }
 
-    public Infection attachToThread() {
-        return Infection.infectThread(this);
+    public CtxAttachment attachToThread() {
+        return CtxAttachment.attachToCurrentThread(this);
     }
 
     public <T> Ctx with(Key<T> key, T value) {
@@ -56,11 +56,7 @@ public class Ctx {
         next.putAll(this.values);
         next.put(key, value);
 
-        Ctx child = new Ctx(life, next);
-        if (Infection.isCurrentThreadInfected()) {
-            Infection.update(child);
-        }
-        return child;
+        return new Ctx(life, next);
     }
 
     public Ctx createChild() {

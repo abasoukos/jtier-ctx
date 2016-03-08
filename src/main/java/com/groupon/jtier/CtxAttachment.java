@@ -5,25 +5,25 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
-public class Infection implements AutoCloseable {
-    private static ThreadLocal<Optional<Infection>> INFECTION = ThreadLocal.withInitial(Optional::empty);
+public class CtxAttachment implements AutoCloseable {
+    private static ThreadLocal<Optional<CtxAttachment>> INFECTION = ThreadLocal.withInitial(Optional::empty);
 
-    private final CompletableFuture<Infection> listener;
+    private final CompletableFuture<CtxAttachment> listener;
     private final Ctx ctx;
 
-    Infection(CompletableFuture<Infection> listener, Ctx ctx) {
+    CtxAttachment(CompletableFuture<CtxAttachment> listener, Ctx ctx) {
         this.listener = listener;
         this.ctx = ctx;
     }
 
     static void update(Ctx ctx) {
-        Optional<Infection> infection = INFECTION.get();
+        Optional<CtxAttachment> infection = INFECTION.get();
         if (infection.isPresent()) {
-            INFECTION.set(infection.map((old) -> new Infection(old.listener, ctx)));
+            INFECTION.set(infection.map((old) -> new CtxAttachment(old.listener, ctx)));
         }
     }
 
-    public static boolean isCurrentThreadInfected() {
+    static boolean isCurrentThreadAttached() {
         return INFECTION.get().isPresent();
     }
 
@@ -31,15 +31,11 @@ public class Infection implements AutoCloseable {
         return ctx;
     }
 
-    public static Optional<Ctx> currentCtx() {
-        return currentInfection().map(Infection::getCtx);
+    static Optional<Ctx> currentCtx() {
+        return INFECTION.get().map(CtxAttachment::getCtx);
     }
 
-    public static Optional<Infection> currentInfection() {
-        return INFECTION.get();
-    }
-
-    public CompletionStage<Infection> whenDetached() {
+    public CompletionStage<CtxAttachment> whenDetached() {
         return listener;
     }
 
@@ -48,22 +44,22 @@ public class Infection implements AutoCloseable {
         disinfectThread();
     }
 
-    static Infection infectThread(Ctx ctx) {
-        Infection i = new Infection(new CompletableFuture<>(), ctx);
+    static CtxAttachment attachToCurrentThread(Ctx ctx) {
+        CtxAttachment i = new CtxAttachment(new CompletableFuture<>(), ctx);
         INFECTION.set(Optional.of(i));
         return i;
     }
 
     static void disinfectThread() {
-        Optional<Infection> o = INFECTION.get();
+        Optional<CtxAttachment> o = INFECTION.get();
         INFECTION.set(Optional.empty());
         if (o.isPresent()) {
-            Infection i = o.get();
+            CtxAttachment i = o.get();
             i.listener.complete(i);
         }
     }
 
-    static Optional<Infection> getCurrentInfection() {
+    static Optional<CtxAttachment> getCurrentAttachment() {
         return INFECTION.get();
     }
 

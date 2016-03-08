@@ -44,10 +44,10 @@ class AttachingExecutor extends AbstractExecutorService {
 
     @Override
     public void execute(Runnable command) {
-        if (Infection.isCurrentThreadInfected()) {
-            Infection infection = Infection.getCurrentInfection().get();
+        if (CtxAttachment.isCurrentThreadAttached()) {
+            CtxAttachment infection = CtxAttachment.getCurrentAttachment().get();
             target.execute(() -> {
-                try (Infection _i = infection.getCtx().attachToThread()) {
+                try (CtxAttachment _i = infection.getCtx().attachToThread()) {
                     command.run();
                 }
             });

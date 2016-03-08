@@ -22,45 +22,20 @@ public class CtxTest {
     public void testExplicitThreadLocalInfection() throws Exception {
         Ctx root = Ctx.empty();
 
-        try (Infection i = root.attachToThread()) {
-            assertThat(Infection.isCurrentThreadInfected()).isTrue();
-            assertThat(Infection.currentCtx()).isPresent();
+        try (CtxAttachment i = root.attachToThread()) {
+            assertThat(CtxAttachment.isCurrentThreadAttached()).isTrue();
+            assertThat(CtxAttachment.currentCtx()).isPresent();
 
-            Ctx magic = Infection.currentCtx().get();
+            Ctx magic = CtxAttachment.currentCtx().get();
             assertThat(magic).isEqualTo(i.getCtx());
         }
 
-        assertThat(Infection.isCurrentThreadInfected()).isFalse();
-    }
-
-    @Test
-    public void testInfectionIsContagious() throws Exception {
-        try (Infection child = Ctx.empty().attachToThread()) {
-            child.getCtx().with(NAME, "Brian");
-
-            assertThat(Infection.currentCtx().get().get(NAME).get()).isEqualTo("Brian");
-        }
+        assertThat(CtxAttachment.isCurrentThreadAttached()).isFalse();
     }
 
     @Test
     public void testThreadLocalNotAllowedWithoutInject() throws Exception {
-        assertThat(Infection.currentCtx()).isEmpty();
-    }
-
-    @Test
-    public void testDoubleInfection() throws Exception {
-        try (Infection i = Ctx.empty().attachToThread()) {
-            try (Infection i2 = i.getCtx().attachToThread()) {
-                i2.getCtx().with(NAME, "Ian");
-
-                assertThat(Infection.currentCtx().get().get(NAME).get()).isEqualTo("Ian");
-            }
-            // closing dis-infects the thread, period
-            assertThat(Infection.isCurrentThreadInfected()).isFalse();
-
-        }
-
-        assertThat(Infection.isCurrentThreadInfected()).isFalse();
+        assertThat(CtxAttachment.currentCtx()).isEmpty();
     }
 
     @Test

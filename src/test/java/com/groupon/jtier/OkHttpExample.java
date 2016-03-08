@@ -39,7 +39,7 @@ public class OkHttpExample {
 
         UUID id = UUID.randomUUID();
 
-        try (Infection _i = Ctx.empty().with(REQUEST_ID, id).attachToThread()) {
+        try (CtxAttachment _i = Ctx.empty().with(REQUEST_ID, id).attachToThread()) {
             Call call = ok.newCall(new Request.Builder().url(web.url("/")).build());
             Response response = call.execute();
             assertThat(response.code()).isEqualTo(200);
@@ -55,8 +55,8 @@ public class OkHttpExample {
         public Response intercept(Chain chain) throws IOException {
             Request req = chain.request();
 
-            if (Infection.isCurrentThreadInfected()) {
-                Ctx ctx = Infection.currentCtx().get();
+            if (CtxAttachment.isCurrentThreadAttached()) {
+                Ctx ctx = CtxAttachment.currentCtx().get();
                 UUID reqid = ctx.get(REQUEST_ID).get();
                 if (reqid != null) {
                     req = req.newBuilder()
