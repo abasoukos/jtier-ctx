@@ -16,9 +16,9 @@ public class TimeoutTest {
         ClockedExecutorService clock = new ClockedExecutorService();
 
         Ctx ctx = Ctx.empty();
-        ctx.startTimeout(Duration.ofMillis(100), clock);
+        ctx.startTimeout(Duration.ofDays(100), clock);
 
-        clock.advance(102, TimeUnit.MILLISECONDS);
+        clock.advance(102, TimeUnit.DAYS);
 
         assertThat(ctx.isCancelled()).isTrue();
     }
@@ -28,14 +28,14 @@ public class TimeoutTest {
         ClockedExecutorService clock = new ClockedExecutorService();
 
         Ctx ctx = Ctx.empty();
-        ctx.startTimeout(Duration.ofMillis(100), clock);
+        ctx.startTimeout(Duration.ofDays(100), clock);
 
         Thread.sleep(10);
         Optional<Duration> tr = ctx.getApproximateTimeRemaining();
         assertThat(tr).isPresent();
         Duration d = tr.get();
 
-        assertThat(d.toMillis()).isLessThanOrEqualTo(90);
+        assertThat(d.toDays()).isLessThanOrEqualTo(99);
 
     }
 
