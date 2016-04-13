@@ -43,7 +43,7 @@ public class Ctx {
         return new Ctx(new Life(Optional.empty()), ImmutableMap.of());
     }
 
-    public static Optional<Ctx> fromInfectedThread() {
+    public static Optional<Ctx> fromThread() {
         return CtxAttachment.currentCtx();
     }
 

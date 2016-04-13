@@ -6,7 +6,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 public class CtxAttachment implements AutoCloseable {
-    private static ThreadLocal<Optional<CtxAttachment>> INFECTION = ThreadLocal.withInitial(Optional::empty);
+    private static ThreadLocal<Optional<CtxAttachment>> ATTACHMENT = ThreadLocal.withInitial(Optional::empty);
 
     private final CompletableFuture<CtxAttachment> listener;
     private final Ctx ctx;
@@ -17,14 +17,14 @@ public class CtxAttachment implements AutoCloseable {
     }
 
     static void update(Ctx ctx) {
-        Optional<CtxAttachment> infection = INFECTION.get();
+        Optional<CtxAttachment> infection = ATTACHMENT.get();
         if (infection.isPresent()) {
-            INFECTION.set(infection.map((old) -> new CtxAttachment(old.listener, ctx)));
+            ATTACHMENT.set(infection.map((old) -> new CtxAttachment(old.listener, ctx)));
         }
     }
 
     static boolean isCurrentThreadAttached() {
-        return INFECTION.get().isPresent();
+        return ATTACHMENT.get().isPresent();
     }
 
     public Ctx getCtx() {
@@ -32,7 +32,7 @@ public class CtxAttachment implements AutoCloseable {
     }
 
     static Optional<Ctx> currentCtx() {
-        return INFECTION.get().map(CtxAttachment::getCtx);
+        return ATTACHMENT.get().map(CtxAttachment::getCtx);
     }
 
     public CompletionStage<CtxAttachment> whenDetached() {
@@ -46,13 +46,13 @@ public class CtxAttachment implements AutoCloseable {
 
     static CtxAttachment attachToCurrentThread(Ctx ctx) {
         CtxAttachment i = new CtxAttachment(new CompletableFuture<>(), ctx);
-        INFECTION.set(Optional.of(i));
+        ATTACHMENT.set(Optional.of(i));
         return i;
     }
 
     static void disinfectThread() {
-        Optional<CtxAttachment> o = INFECTION.get();
-        INFECTION.set(Optional.empty());
+        Optional<CtxAttachment> o = ATTACHMENT.get();
+        ATTACHMENT.set(Optional.empty());
         if (o.isPresent()) {
             CtxAttachment i = o.get();
             i.listener.complete(i);
@@ -60,7 +60,7 @@ public class CtxAttachment implements AutoCloseable {
     }
 
     static Optional<CtxAttachment> getCurrentAttachment() {
-        return INFECTION.get();
+        return ATTACHMENT.get();
     }
 
     /**
