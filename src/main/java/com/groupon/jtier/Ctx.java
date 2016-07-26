@@ -40,7 +40,7 @@ public class Ctx {
      * If a context is attached at the time of job submission, that context is saved and attached
      * before execution of the job, then detached after.
      */
-    public static ExecutorService propagateFromThread(final ExecutorService exec) {
+    public static ExecutorService createPropagatingExecutor(final ExecutorService exec) {
         return AttachingExecutor.infect(exec);
     }
 

@@ -58,10 +58,8 @@ class Life {
 
     void startTimeout(final Ctx timerCtx, final Duration duration, final ScheduledExecutorService scheduler) {
         final ScheduledFuture<?> future = scheduler.schedule(() -> cancel(timerCtx),
-                duration.getNano(),
-                TimeUnit.NANOSECONDS);
-        final Timeout t = new TimeoutBuilder().future(future)
-                .finishAt(duration.addTo(Instant.now()))
+                duration.getNano(), TimeUnit.NANOSECONDS);
+        final Timeout t = new TimeoutBuilder().future(future).finishAt(duration.addTo(Instant.now()))
                 .build();
         final Optional<Timeout> old = timeout.getAndSet(Optional.of(t));
 

@@ -5,7 +5,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 public class CtxAttachment implements AutoCloseable {
-    private static final ThreadLocal<Optional<CtxAttachment>> ATTACHMENT = InheritableThreadLocal.withInitial(Optional::empty);
+    private static final ThreadLocal<Optional<CtxAttachment>> ATTACHMENT = ThreadLocal.withInitial(Optional::empty);
 
     private final CompletableFuture<CtxAttachment> listener;
     private final Ctx ctx;

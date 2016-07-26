@@ -13,7 +13,7 @@ class AttachingExecutor extends AbstractExecutorService {
         this.target = target;
     }
 
-    public static ExecutorService infect(final ExecutorService target) {
+    static ExecutorService infect(final ExecutorService target) {
         return new AttachingExecutor(target);
     }
 

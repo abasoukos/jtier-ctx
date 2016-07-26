@@ -1,13 +1,11 @@
 package com.groupon.jtier;
 
-import com.google.common.collect.Lists;
-
 import org.junit.Test;
 
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -89,11 +87,12 @@ public class CtxTest {
 
     @Test
     public void testPropagateFromThread() throws Exception {
-        final ExecutorService pool = Ctx.propagateFromThread(Executors.newFixedThreadPool(1));
-        final List<Integer> isCurrentThreadAttached = Lists.newArrayList();
+        final ExecutorService pool = Ctx.createPropagatingExecutor(Executors.newFixedThreadPool(1));
+        final AtomicReference<Boolean> isCurrentThreadAttached = new AtomicReference(false);
+
         final Runnable command = () -> {
             if (CtxAttachment.isCurrentThreadAttached()) {
-                isCurrentThreadAttached.add(1);
+                isCurrentThreadAttached.set(true);
             }
         };
 
@@ -101,6 +100,6 @@ public class CtxTest {
             pool.execute(command);
         }
         pool.awaitTermination(1, TimeUnit.SECONDS);
-        assertThat(isCurrentThreadAttached).hasSize(1);
+        assertThat(isCurrentThreadAttached.get()).isTrue();
     }
 }
