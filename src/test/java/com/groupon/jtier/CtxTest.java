@@ -1,6 +1,13 @@
 package com.groupon.jtier;
 
+import com.google.common.collect.Lists;
+
 import org.junit.Test;
+
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -11,8 +18,8 @@ public class CtxTest {
 
     @Test
     public void testKeyOnChildIsNotOnParent() throws Exception {
-        Ctx root = Ctx.empty();
-        Ctx child = root.with(NAME, "Brian");
+        final Ctx root = Ctx.empty();
+        final Ctx child = root.with(NAME, "Brian");
 
         assertThat(child.get(NAME).get()).isEqualTo("Brian");
         assertThat(root.get(NAME)).isEmpty();
@@ -20,13 +27,13 @@ public class CtxTest {
 
     @Test
     public void testExplicitThreadLocalInfection() throws Exception {
-        Ctx root = Ctx.empty();
+        final Ctx root = Ctx.empty();
 
         try (CtxAttachment i = root.attachToThread()) {
             assertThat(CtxAttachment.isCurrentThreadAttached()).isTrue();
             assertThat(CtxAttachment.currentCtx()).isPresent();
 
-            Ctx magic = CtxAttachment.currentCtx().get();
+            final Ctx magic = CtxAttachment.currentCtx().get();
             assertThat(magic).isEqualTo(i.getCtx());
         }
 
@@ -40,9 +47,9 @@ public class CtxTest {
 
     @Test
     public void testCancelOnPeers() throws Exception {
-        Ctx brian = Ctx.empty().with(NAME, "Brian");
-        Ctx eric = brian.with(NAME, "Eric");
-        Ctx keith = brian.with(NAME, "Keith");
+        final Ctx brian = Ctx.empty().with(NAME, "Brian");
+        final Ctx eric = brian.with(NAME, "Eric");
+        final Ctx keith = brian.with(NAME, "Keith");
 
         brian.cancel();
 
@@ -53,7 +60,7 @@ public class CtxTest {
 
     @Test
     public void testCancelOnTree() throws Exception {
-        Ctx tip = Ctx.empty().with(NAME, "Tip");
+        final Ctx tip = Ctx.empty().with(NAME, "Tip");
 
         /*
         (tip
@@ -64,11 +71,11 @@ public class CtxTest {
                (sprinkle)))))
          */
 
-        Ctx brian = tip.createChild().with(NAME, "Brian");
-        Ctx ian = brian.createChild().with(NAME, "Ian");
-        Ctx panda = ian.createChild().with(NAME, "Panda");
-        Ctx cora = brian.createChild().with(NAME, "Cora");
-        Ctx sprinkle = cora.createChild().with(NAME, "Sprinkle Kitty");
+        final Ctx brian = tip.createChild().with(NAME, "Brian");
+        final Ctx ian = brian.createChild().with(NAME, "Ian");
+        final Ctx panda = ian.createChild().with(NAME, "Panda");
+        final Ctx cora = brian.createChild().with(NAME, "Cora");
+        final Ctx sprinkle = cora.createChild().with(NAME, "Sprinkle Kitty");
 
         brian.cancel();
 

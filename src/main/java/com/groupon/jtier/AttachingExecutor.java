@@ -9,11 +9,11 @@ class AttachingExecutor extends AbstractExecutorService {
 
     private final ExecutorService target;
 
-    private AttachingExecutor(ExecutorService target) {
+    private AttachingExecutor(final ExecutorService target) {
         this.target = target;
     }
 
-    public static ExecutorService infect(ExecutorService target) {
+    public static ExecutorService infect(final ExecutorService target) {
         return new AttachingExecutor(target);
     }
 
@@ -38,21 +38,20 @@ class AttachingExecutor extends AbstractExecutorService {
     }
 
     @Override
-    public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+    public boolean awaitTermination(final long timeout, final TimeUnit unit) throws InterruptedException {
         return target.awaitTermination(timeout, unit);
     }
 
     @Override
-    public void execute(Runnable command) {
+    public void execute(final Runnable command) {
         if (CtxAttachment.isCurrentThreadAttached()) {
-            CtxAttachment infection = CtxAttachment.getCurrentAttachment().get();
+            final CtxAttachment infection = CtxAttachment.getCurrentAttachment().get();
             target.execute(() -> {
                 try (CtxAttachment _i = infection.getCtx().attachToThread()) {
                     command.run();
                 }
             });
-        }
-        else {
+        } else {
             target.execute(command);
         }
     }
