@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
 public class Ctx {
@@ -31,6 +32,16 @@ public class Ctx {
 
     public static <T> Key<T> key(final String name, final Class<T> type) {
         return new Key<>(type, name);
+    }
+
+    /**
+     * Creates an ExecutorService which propagates attached contexts.
+     *
+     * If a context is attached at the time of job submission, that context is saved and attached
+     * before execution of the job, then detached after.
+     */
+    public static ExecutorService propagateFromThread(final ExecutorService exec) {
+        return AttachingExecutor.infect(exec);
     }
 
     public void cancel() {

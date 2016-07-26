@@ -86,4 +86,21 @@ public class CtxTest {
         assertThat(sprinkle.isCancelled()).isTrue();
         assertThat(tip.isCancelled()).isFalse();
     }
+
+    @Test
+    public void testPropagateFromThread() throws Exception {
+        final ExecutorService pool = Ctx.propagateFromThread(Executors.newFixedThreadPool(1));
+        final List<Integer> isCurrentThreadAttached = Lists.newArrayList();
+        final Runnable command = () -> {
+            if (CtxAttachment.isCurrentThreadAttached()) {
+                isCurrentThreadAttached.add(1);
+            }
+        };
+
+        try (CtxAttachment _i = Ctx.empty().attachToThread()) {
+            pool.execute(command);
+        }
+        pool.awaitTermination(1, TimeUnit.SECONDS);
+        assertThat(isCurrentThreadAttached).hasSize(1);
+    }
 }

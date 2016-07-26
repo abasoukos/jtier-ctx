@@ -3,7 +3,6 @@ package com.groupon.jtier;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutorService;
 
 public class CtxAttachment implements AutoCloseable {
     private static final ThreadLocal<Optional<CtxAttachment>> ATTACHMENT = InheritableThreadLocal.withInitial(Optional::empty);
@@ -48,16 +47,6 @@ public class CtxAttachment implements AutoCloseable {
 
     static Optional<CtxAttachment> getCurrentAttachment() {
         return ATTACHMENT.get();
-    }
-
-    /**
-     * Creates an ExecutorService which propagates attached contexts.
-     *
-     * If a context is attached at the time of job submission, that context is saved and attached
-     * before execution of the job, then detached after.
-     */
-    public static ExecutorService wrap(final ExecutorService exec) {
-        return AttachingExecutor.infect(exec);
     }
 
     public Ctx getCtx() {
