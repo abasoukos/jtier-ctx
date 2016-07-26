@@ -69,7 +69,7 @@ public class CtxAttachment implements AutoCloseable {
      * If a context is attached at the time of job submission, that context is saved
      * and attached before execution of the job, then detached after.
      */
-    static ExecutorService wrap(ExecutorService exec) {
+    public static ExecutorService wrap(final ExecutorService exec) {
         return AttachingExecutor.infect(exec);
     }
 }
