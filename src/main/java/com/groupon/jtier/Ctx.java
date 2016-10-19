@@ -5,15 +5,22 @@ import com.google.common.collect.ImmutableMap;
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
-public class Ctx {
+public class Ctx implements AutoCloseable {
+
+    private static final ThreadLocal<Optional<Ctx>> ATTACHED = ThreadLocal.withInitial(Optional::empty);
+
     private final Life life;
     private final Map<Key<?>, Object> values;
+
+    private final List<Runnable> attachListeners = new CopyOnWriteArrayList<>();
+    private final List<Runnable> detachListeners = new CopyOnWriteArrayList<>();
 
     private Ctx(final Life life, final Map<Key<?>, Object> values) {
         this.life = life;
@@ -25,9 +32,15 @@ public class Ctx {
     }
 
     public static Optional<Ctx> fromThread() {
+        return ATTACHED.get();
+    }
 
-        return CtxAttachment.currentCtx();
-
+    /**
+     * Forcibly detach
+     */
+    public static void cleanThread() {
+        final Optional<Ctx> oc = ATTACHED.get();
+        oc.ifPresent(Ctx::close);
     }
 
     public static <T> Key<T> key(final String name, final Class<T> type) {
@@ -44,28 +57,16 @@ public class Ctx {
         return AttachingExecutor.infect(exec);
     }
 
-    public void cancel() {
-        life.cancel(this);
+    public Ctx attachToThread() {
+        ATTACHED.set(Optional.of(this));
+        this.attachListeners.forEach(Runnable::run);
+        return this;
     }
 
-    public void finish() {
-        life.finish(this);
-    }
-
-    public boolean isCancelled() {
-        return life.isCancelled();
-    }
-
-    public boolean isFinished() {
-        return life.isFinished();
-    }
-
-    public boolean isAlive() {
-        return life.isAlive();
-    }
-
-    public CtxAttachment attachToThread() {
-        return CtxAttachment.attachToCurrentThread(this);
+    public void runAttached(final Runnable r) {
+        try (Ctx ignored = attachToThread()) {
+            r.run();
+        }
     }
 
     public <T> Ctx with(final Key<T> key, final T value) {
@@ -73,16 +74,16 @@ public class Ctx {
         next.putAll(this.values);
         next.put(key, value);
 
-        return new Ctx(life, next);
+        return new Ctx(this.life, next);
     }
 
     public Ctx createChild() {
-        return new Ctx(new Life(Optional.of(life)), values);
+        return new Ctx(new Life(Optional.of(this.life)), this.values);
     }
 
     public <T> Optional<T> get(final Key<T> key) {
-        if (values.containsKey(key)) {
-            return Optional.of(key.cast(values.get(key)));
+        if (this.values.containsKey(key)) {
+            return Optional.of(key.cast(this.values.get(key)));
         } else {
             return Optional.empty();
         }
@@ -93,30 +94,60 @@ public class Ctx {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         final Ctx ctx = (Ctx) o;
-        return Objects.equal(life, ctx.life) &&
-                Objects.equal(values, ctx.values);
+        return Objects.equal(this.life, ctx.life) &&
+                Objects.equal(this.values, ctx.values);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(life, values);
+        return Objects.hashCode(this.life, this.values);
     }
 
     public void startTimeout(final Duration duration, final ScheduledExecutorService scheduler) {
-        life.startTimeout(this, duration, scheduler);
+        this.life.startTimeout(duration, scheduler);
     }
 
     public Optional<Duration> getApproximateTimeRemaining() {
-        return life.timeRemaining();
+        return this.life.timeRemaining();
     }
 
-    public CompletionStage<Ctx> whenCancelled() {
-        return life.whenCanceled();
+    @Override
+    public void close() {
+        final Optional<Ctx> o = ATTACHED.get();
+        if (o.isPresent()) {
+            final Ctx attached = o.get();
+            if (attached != this) {
+                // TODO write test for this
+                throw new IllegalStateException("Attempt to detach different context from current thread");
+            }
+            ATTACHED.set(Optional.empty());
+            this.detachListeners.forEach(Runnable::run);
+        } else {
+            throw new IllegalStateException("Attempt to detach context from unattached thread");
+        }
     }
 
-    public CompletionStage<Ctx> whenFinished() {
-        return life.whenFinished();
+
+    public void cancel() {
+        this.life.cancel();
     }
+
+    public boolean isCancelled() {
+        return this.life.isCancelled();
+    }
+
+    public void onDetach(final Runnable runnable) {
+        this.detachListeners.add(runnable);
+    }
+
+    public void onAttach(final Runnable runnable) {
+        this.attachListeners.add(runnable);
+    }
+
+    public void onCancel(final Runnable runnable) {
+        this.life.onCancel(runnable);
+    }
+
 
     public static final class Key<T> {
         private final Class<T> type;
@@ -128,7 +159,7 @@ public class Ctx {
         }
 
         public T cast(final Object obj) {
-            return type.cast(obj);
+            return this.type.cast(obj);
         }
 
         @Override
@@ -136,13 +167,13 @@ public class Ctx {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             final Key<?> key = (Key<?>) o;
-            return Objects.equal(type, key.type) &&
-                    Objects.equal(name, key.name);
+            return Objects.equal(this.type, key.type) &&
+                    Objects.equal(this.name, key.name);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hashCode(type, name);
+            return Objects.hashCode(this.type, this.name);
         }
     }
 }

@@ -16,18 +16,20 @@ public class LoggingExample {
     @Test
     public void testDiagnosticContextOnInfection() throws Exception {
 
-        try (CtxAttachment i = Ctx.empty().attachToThread()) {
-            i.whenDetached().thenRun(MDC::clear);
+        final Ctx c = Ctx.empty();
+        c.onAttach(() -> MDC.put("name", "grumbly"));
+        c.onDetach(MDC::clear);
 
+        try (Ctx ignored = c.attachToThread()) {
             MDC.put("name", "grumbly");
-            Logger logger = LoggerFactory.getLogger(LoggingExample.class);
+            final Logger logger = LoggerFactory.getLogger(LoggingExample.class);
             logger.debug("log");
         }
 
         assertThat(MDC.get("name")).isNull();
 
-        TestLogger logger = TestLoggerFactory.getTestLogger(LoggingExample.class);
-        ImmutableList<LoggingEvent> events = logger.getLoggingEvents();
+        final TestLogger logger = TestLoggerFactory.getTestLogger(LoggingExample.class);
+        final ImmutableList<LoggingEvent> events = logger.getLoggingEvents();
 
         assertThat(events).hasSize(1);
         assertThat(events.get(0).getMdc()).containsEntry("name", "grumbly");

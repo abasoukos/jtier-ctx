@@ -5,9 +5,11 @@ import org.junit.Test;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class CtxTest {
 
@@ -27,20 +29,18 @@ public class CtxTest {
     public void testExplicitThreadLocalInfection() throws Exception {
         final Ctx root = Ctx.empty();
 
-        try (CtxAttachment i = root.attachToThread()) {
-            assertThat(CtxAttachment.isCurrentThreadAttached()).isTrue();
-            assertThat(CtxAttachment.currentCtx()).isPresent();
-
-            final Ctx magic = CtxAttachment.currentCtx().get();
-            assertThat(magic).isEqualTo(i.getCtx());
+        try (Ctx i = root.attachToThread()) {
+            assertThat(Ctx.fromThread()).isPresent();
+            final Ctx magic = Ctx.fromThread().get();
+            assertThat(magic).isEqualTo(i);
         }
 
-        assertThat(CtxAttachment.isCurrentThreadAttached()).isFalse();
+        assertThat(Ctx.fromThread().isPresent()).isFalse();
     }
 
     @Test
     public void testThreadLocalNotAllowedWithoutInject() throws Exception {
-        assertThat(CtxAttachment.currentCtx()).isEmpty();
+        assertThat(Ctx.fromThread()).isEmpty();
     }
 
     @Test
@@ -91,15 +91,41 @@ public class CtxTest {
         final AtomicReference<Boolean> isCurrentThreadAttached = new AtomicReference(false);
 
         final Runnable command = () -> {
-            if (CtxAttachment.isCurrentThreadAttached()) {
+            if (Ctx.fromThread().isPresent()) {
                 isCurrentThreadAttached.set(true);
             }
         };
 
-        try (CtxAttachment _i = Ctx.empty().attachToThread()) {
+        try (Ctx _i = Ctx.empty().attachToThread()) {
             pool.execute(command);
         }
         pool.awaitTermination(1, TimeUnit.SECONDS);
         assertThat(isCurrentThreadAttached.get()).isTrue();
+    }
+
+    @Test
+    public void testDetachWrongCtx() throws Exception {
+        final Ctx c = Ctx.empty();
+
+        c.runAttached(() -> {
+            assertThatThrownBy(() -> Ctx.empty().close()).isInstanceOf(IllegalStateException.class);
+        });
+    }
+
+    @Test
+    public void testAttachNoContext() throws Exception {
+        assertThatThrownBy(() -> Ctx.empty().close()).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    public void testStaticDetachCallsListeners() throws Exception {
+        final Ctx c = Ctx.empty();
+        c.attachToThread();
+
+        final AtomicBoolean ran = new AtomicBoolean(false);
+        c.onDetach(() -> ran.set(true));
+
+        Ctx.cleanThread();
+        assertThat(ran.get()).isTrue();
     }
 }

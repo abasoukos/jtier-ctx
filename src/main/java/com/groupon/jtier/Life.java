@@ -5,63 +5,39 @@ import org.immutables.value.Value;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.Temporal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 class Life {
-
-    private final Optional<Life> parent;
-    private final AtomicReference<Optional<Timeout>> timeout = new AtomicReference<>(Optional.empty());
-    private final CompletableFuture<Ctx> cancel = new CompletableFuture<>();
-    private final CompletableFuture<Ctx> finished = new CompletableFuture<>();
+    private volatile Optional<Timeout> timeout = Optional.empty();
     private volatile State state = State.ALIVE;
+    private final List<Runnable> cancelListeners = new ArrayList<>();
+
 
     Life(final Optional<Life> parent) {
-        this.parent = parent;
         if (parent.isPresent()) {
             final Life plife = parent.get();
-            plife.whenCanceled().thenAccept(cancel::complete);
-            plife.whenFinished().thenAccept(finished::complete);
+            plife.onCancel(this::cancel);
         }
     }
 
-    void cancel(final Ctx canceledCtx) {
-        if (state == State.ALIVE) {
-            state = State.CANCELLED;
-            cancel.complete(canceledCtx);
+    synchronized void cancel() {
+        if (this.state == State.ALIVE) {
+            this.state = State.CANCELLED;
+            this.cancelListeners.forEach(Runnable::run);
+            this.cancelListeners.clear();
         }
     }
 
-    void finish(final Ctx finishedCtx) {
-        if (state == State.ALIVE) {
-            state = State.FINISHED;
-            finished.complete(finishedCtx);
-        }
-    }
-
-    boolean isCancelled() {
-        return state == State.CANCELLED || parent.map(Life::isCancelled).orElse(false);
-    }
-
-    boolean isFinished() {
-        return state == State.FINISHED || parent.map(Life::isFinished).orElse(false);
-    }
-
-    boolean isAlive() {
-        return state == State.ALIVE || parent.map(Life::isAlive).orElse(false);
-    }
-
-    void startTimeout(final Ctx timerCtx, final Duration duration, final ScheduledExecutorService scheduler) {
-        final ScheduledFuture<?> future = scheduler.schedule(() -> cancel(timerCtx),
-                duration.getNano(), TimeUnit.NANOSECONDS);
-        final Timeout t = new TimeoutBuilder().future(future).finishAt(duration.addTo(Instant.now()))
-                .build();
-        final Optional<Timeout> old = timeout.getAndSet(Optional.of(t));
+    synchronized void startTimeout(final Duration duration, final ScheduledExecutorService scheduler) {
+        final ScheduledFuture<?> future = scheduler.schedule(this::cancel, duration.getNano(), TimeUnit.NANOSECONDS);
+        final Timeout t = new TimeoutBuilder().future(future).finishAt(duration.addTo(Instant.now())).build();
+        final Optional<Timeout> old = this.timeout;
+        this.timeout = Optional.of(t);
 
         // try to cancel as we are replacing the timeout, best effort
         if (old.isPresent()) {
@@ -69,28 +45,30 @@ class Life {
         }
     }
 
-    Optional<Duration> timeRemaining() {
-        return timeout.get().map((d) -> Duration.between(Instant.now(), d.finishAt()));
+    synchronized  Optional<Duration> timeRemaining() {
+        return this.timeout.map((d) -> Duration.between(Instant.now(), d.finishAt()));
     }
 
-    public CompletionStage<Ctx> whenCanceled() {
-        return cancel;
+    synchronized boolean isCancelled() {
+        return this.state == State.CANCELLED;
     }
 
-    public CompletionStage<Ctx> whenFinished() {
-        return finished;
+    synchronized void onCancel(final Runnable runnable) {
+        if (isCancelled()) {
+            runnable.run();
+            return;
+        }
+        this.cancelListeners.add(runnable);
     }
 
     private enum State {
-        ALIVE, CANCELLED, FINISHED
+        ALIVE, CANCELLED
     }
 
     @Value.Immutable
     @Value.Style(visibility = Value.Style.ImplementationVisibility.PRIVATE)
     abstract static class Timeout {
-
         abstract Temporal finishAt();
-
         abstract ScheduledFuture<?> future();
     }
 

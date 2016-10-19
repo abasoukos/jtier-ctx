@@ -12,11 +12,11 @@ public class LifeEventsTest {
 
     @Test
     public void testCancelEventFires() throws Exception {
-        Ctx d = Ctx.empty();
-        CountDownLatch latch = new CountDownLatch(1);
-        AtomicBoolean canceled = new AtomicBoolean(false);
+        final Ctx d = Ctx.empty();
+        final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicBoolean canceled = new AtomicBoolean(false);
 
-        d.whenCancelled().thenAccept((_d) -> {
+        d.onCancel(() -> {
             canceled.set(true);
             latch.countDown();
         });
@@ -29,59 +29,23 @@ public class LifeEventsTest {
 
     @Test
     public void testCancelParentCancelsChildren() throws Exception {
-        Ctx p = Ctx.empty();
-        Ctx c = p.createChild();
+        final Ctx p = Ctx.empty();
+        final Ctx c = p.createChild();
 
-        CountDownLatch latch = new CountDownLatch(1);
-        AtomicBoolean canceled = new AtomicBoolean(false);
+        final AtomicBoolean canceled = new AtomicBoolean(false);
 
-        c.whenCancelled().thenAccept((canceledDing) -> {
-            canceled.set(true);
-            assertThat(canceledDing).isSameAs(p);
-            latch.countDown();
-        });
+        c.onCancel(() -> canceled.set(true));
 
         p.cancel();
-
-        assertThat(latch.await(20, TimeUnit.MILLISECONDS)).isTrue();
         assertThat(canceled.get()).isTrue();
     }
 
     @Test
-    public void testFinishEventFires() throws Exception {
-        Ctx d = Ctx.empty();
-        CountDownLatch latch = new CountDownLatch(1);
-        AtomicBoolean canceled = new AtomicBoolean(false);
-
-        d.whenFinished().thenAccept((_d) -> {
-            canceled.set(true);
-            latch.countDown();
-        });
-
-        d.finish();
-
-        assertThat(latch.await(20, TimeUnit.MILLISECONDS)).isTrue();
-        assertThat(canceled.get()).isTrue();
+    public void testOnCancelAfterCancelExecutesImmediately() throws Exception {
+        final Ctx c = Ctx.empty();
+        c.cancel();
+        final boolean[] canceled = {false};
+        c.onCancel(() -> canceled[0] = true );
+        assertThat(canceled[0]).isTrue();
     }
-
-    @Test
-    public void testFinishParentCancelsChildren() throws Exception {
-        Ctx p = Ctx.empty();
-        Ctx c = p.createChild();
-
-        CountDownLatch latch = new CountDownLatch(1);
-        AtomicBoolean canceled = new AtomicBoolean(false);
-
-        c.whenFinished().thenAccept((canceledDing) -> {
-            canceled.set(true);
-            assertThat(canceledDing).isSameAs(p);
-            latch.countDown();
-        });
-
-        p.finish();
-
-        assertThat(latch.await(20, TimeUnit.MILLISECONDS)).isTrue();
-        assertThat(canceled.get()).isTrue();
-    }
-
 }
