@@ -13,27 +13,31 @@ public class TimeoutTest {
 
     @Test
     public void testTimeoutCancels() throws Exception {
-        ClockedExecutorService clock = new ClockedExecutorService();
+        final ClockedExecutorService clock = new ClockedExecutorService();
 
-        Ctx ctx = Ctx.empty();
-        ctx.startTimeout(Duration.ofDays(100), clock);
+        final Ctx ctx = Ctx.empty();
+        ctx.startTimeout(1, TimeUnit.SECONDS, clock);
 
-        clock.advance(102, TimeUnit.DAYS);
-
+        clock.advance(2, TimeUnit.SECONDS).get();
         assertThat(ctx.isCancelled()).isTrue();
     }
 
     @Test
-    public void testTimeRemaining() throws Exception {
-        ClockedExecutorService clock = new ClockedExecutorService();
+    public void testTimeoutMilliseconds() throws Exception {
+        Ctx.empty().startTimeout(1, TimeUnit.MILLISECONDS);
+    }
 
-        Ctx ctx = Ctx.empty();
-        ctx.startTimeout(Duration.ofDays(100), clock);
+    @Test
+    public void testTimeRemaining() throws Exception {
+        final ClockedExecutorService clock = new ClockedExecutorService();
+
+        final Ctx ctx = Ctx.empty();
+        ctx.startTimeout(100, TimeUnit.DAYS, clock);
 
         Thread.sleep(10);
-        Optional<Duration> tr = ctx.getApproximateTimeRemaining();
+        final Optional<Duration> tr = ctx.getApproximateTimeRemaining();
         assertThat(tr).isPresent();
-        Duration d = tr.get();
+        final Duration d = tr.get();
 
         assertThat(d.toDays()).isLessThanOrEqualTo(99);
 

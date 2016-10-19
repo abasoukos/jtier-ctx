@@ -1,7 +1,6 @@
 package com.groupon.jtier;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -45,16 +44,8 @@ class AttachingExecutor extends AbstractExecutorService {
 
     @Override
     public void execute(final Runnable command) {
-        final Optional<Ctx> oc = Ctx.fromThread();
-        if (oc.isPresent()) {
-            this.target.execute(() -> {
-                try (Ctx ignored = oc.get().attachToThread()) {
-                    command.run();
-                }
-            });
-        }
-        else {
-            this.target.execute(command);
-        }
+        this.target.execute(Ctx.fromThread()
+                               .map((ctx) -> ctx.propagate(command))
+                               .orElse(command));
     }
 }

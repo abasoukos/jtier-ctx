@@ -4,61 +4,93 @@ import org.immutables.value.Value;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.time.temporal.Temporal;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 
 class Life {
-    private volatile Optional<Timeout> timeout = Optional.empty();
-    private volatile State state = State.ALIVE;
-    private final List<Runnable> cancelListeners = new ArrayList<>();
+    private final AtomicReference<Timeout> timeout = new AtomicReference<>();
+    private final AtomicReference<State> state = new AtomicReference<>(State.ALIVE);
+    private final List<Runnable> cancelListeners = new CopyOnWriteArrayList<>();
+    private final ReentrantLock lock = new ReentrantLock();
 
 
     Life(final Optional<Life> parent) {
-        if (parent.isPresent()) {
-            final Life plife = parent.get();
-            plife.onCancel(this::cancel);
+        parent.ifPresent((p) -> p.onCancel(this::cancel));
+    }
+
+    void cancel() {
+        this.lock.lock();
+        try {
+            if (this.state.get() == State.ALIVE) {
+                this.state.set(State.CANCELLED);
+                this.cancelListeners.forEach(Runnable::run);
+                this.cancelListeners.clear();
+            }
+        } finally {
+            this.lock.unlock();
         }
     }
 
-    synchronized void cancel() {
-        if (this.state == State.ALIVE) {
-            this.state = State.CANCELLED;
-            this.cancelListeners.forEach(Runnable::run);
-            this.cancelListeners.clear();
+    void startTimeout(final long time, final TimeUnit unit, final ScheduledExecutorService scheduler) {
+        this.lock.lock();
+        try {
+            final ScheduledFuture<?> future = scheduler.schedule(this::cancel, time, unit);
+
+            final ChronoUnit cronut = chronoUnit(unit);
+            final Timeout t = new TimeoutBuilder().future(future).finishAt(Instant.now().plus(time, cronut)).build();
+            final Timeout old = this.timeout.get();
+            this.timeout.set(t);
+
+            // try to cancel as we are replacing the timeout, best effort
+            if (old != null) {
+                old.future().cancel(false);
+            }
+        } finally {
+            this.lock.unlock();
         }
     }
 
-    synchronized void startTimeout(final Duration duration, final ScheduledExecutorService scheduler) {
-        final ScheduledFuture<?> future = scheduler.schedule(this::cancel, duration.getNano(), TimeUnit.NANOSECONDS);
-        final Timeout t = new TimeoutBuilder().future(future).finishAt(duration.addTo(Instant.now())).build();
-        final Optional<Timeout> old = this.timeout;
-        this.timeout = Optional.of(t);
-
-        // try to cancel as we are replacing the timeout, best effort
-        if (old.isPresent()) {
-            old.get().future().cancel(false);
+    Optional<Duration> timeRemaining() {
+        this.lock.lock();
+        try {
+            final Timeout t = this.timeout.get();
+            if (t == null) {
+                return Optional.empty();
+            }
+            else {
+                return Optional.of(Duration.between(Instant.now(), t.finishAt()));
+            }
+        } finally {
+            this.lock.unlock();
         }
     }
 
-    synchronized  Optional<Duration> timeRemaining() {
-        return this.timeout.map((d) -> Duration.between(Instant.now(), d.finishAt()));
+    boolean isCancelled() {
+        return this.state.get() == State.CANCELLED;
+
     }
 
-    synchronized boolean isCancelled() {
-        return this.state == State.CANCELLED;
-    }
-
-    synchronized void onCancel(final Runnable runnable) {
+    void onCancel(final Runnable runnable) {
         if (isCancelled()) {
             runnable.run();
             return;
         }
-        this.cancelListeners.add(runnable);
+
+        this.lock.lock();
+        try {
+            this.cancelListeners.add(runnable);
+        } finally {
+            this.lock.unlock();
+        }
     }
 
     private enum State {
@@ -69,7 +101,38 @@ class Life {
     @Value.Style(visibility = Value.Style.ImplementationVisibility.PRIVATE)
     abstract static class Timeout {
         abstract Temporal finishAt();
+
         abstract ScheduledFuture<?> future();
+    }
+
+    /**
+     * Converts a {@code TimeUnit} to a {@code ChronoUnit}.
+     * <p>
+     * This handles the seven units declared in {@code TimeUnit}.
+     *
+     * @param unit  the unit to convert, not null
+     * @return the converted unit, not null
+     */
+    private static ChronoUnit chronoUnit(final TimeUnit unit) {
+        Objects.requireNonNull(unit, "unit");
+        switch (unit) {
+            case NANOSECONDS:
+                return ChronoUnit.NANOS;
+            case MICROSECONDS:
+                return ChronoUnit.MICROS;
+            case MILLISECONDS:
+                return ChronoUnit.MILLIS;
+            case SECONDS:
+                return ChronoUnit.SECONDS;
+            case MINUTES:
+                return ChronoUnit.MINUTES;
+            case HOURS:
+                return ChronoUnit.HOURS;
+            case DAYS:
+                return ChronoUnit.DAYS;
+            default:
+                throw new IllegalArgumentException("Unknown TimeUnit constant");
+        }
     }
 
 }
