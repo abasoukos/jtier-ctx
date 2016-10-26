@@ -21,7 +21,6 @@ public class LoggingExample {
         c.onDetach(MDC::clear);
 
         try (Ctx ignored = c.attachToThread()) {
-            MDC.put("name", "grumbly");
             final Logger logger = LoggerFactory.getLogger(LoggingExample.class);
             logger.debug("log");
         }
