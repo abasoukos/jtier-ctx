@@ -98,7 +98,6 @@ public class Ctx implements AutoCloseable {
         final Map<Key<?>, Object> next = new HashMap<>();
         next.putAll(this.values);
         next.put(key, value);
-
         return new Ctx(this.life, next);
     }
 
@@ -190,7 +189,6 @@ public class Ctx implements AutoCloseable {
         if (o.isPresent()) {
             final Ctx attached = o.get();
             if (attached != this) {
-                // TODO write test for this
                 throw new IllegalStateException("Attempt to detach different context from current thread");
             }
             ATTACHED.set(Optional.empty());
