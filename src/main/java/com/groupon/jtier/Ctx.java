@@ -281,7 +281,7 @@ public class Ctx implements AutoCloseable {
     }
 
     /**
-     * Wraps a runnable such that this context is bound to the thread on which the
+     * Wraps a callable such that this context is bound to the thread on which the
      * runnable is run.
      */
     public <T> Callable<T> propagate(final Callable<T> r) {
