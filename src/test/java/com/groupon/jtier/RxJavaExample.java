@@ -16,22 +16,22 @@ public class RxJavaExample {
 
     @Test
     public void testUnsubscribeOnCancel() throws Exception {
-        TestScheduler ticker = Schedulers.test();
+        final TestScheduler ticker = Schedulers.test();
 
-        Ctx ctx = Ctx.empty();
+        final Ctx ctx = Ctx.empty();
 
-        AtomicBoolean failed = new AtomicBoolean(false);
-        AtomicBoolean completed = new AtomicBoolean(false);
-        AtomicInteger counter = new AtomicInteger();
+        final AtomicBoolean failed = new AtomicBoolean(false);
+        final AtomicBoolean completed = new AtomicBoolean(false);
+        final AtomicInteger counter = new AtomicInteger();
 
-        Observable os = Observable.interval(10, TimeUnit.MILLISECONDS, ticker);
+        final Observable os = Observable.interval(10, TimeUnit.MILLISECONDS, ticker);
 
-        Subscription s = os.subscribe((i) -> counter.getAndIncrement(),
-                                      (e) -> failed.set(true),
-                                      () -> completed.set(true));
+        final Subscription s = os.subscribe((i) -> counter.getAndIncrement(),
+                                            (e) -> failed.set(true),
+                                            () -> completed.set(true));
 
         // unsubscribe when currentExchange is cancelled
-        ctx.whenCancelled().thenRun(s::unsubscribe);
+        ctx.onCancel(s::unsubscribe);
 
         // receive first event
         ticker.advanceTimeBy(10, TimeUnit.MILLISECONDS);

@@ -1,41 +1,56 @@
-# jtier-ctx
+# ctx
 
-A `Ctx` is a request context, but we wanted a shorter word than `RequestContext` and `Context` by itself is too overloaded. A `Ctx` is primarily used to propagate context from an incoming request to outgoing requests, or various libraries such as logging or metrics, in an RPC exchange. For example, an HTTP request comes in with an `X-Request-Id` header, which should be propagated to all clients, added to a mapped diagnostic context for logs associated with RPC exchange.
+A `Ctx` represents the context in which an operation occurs. It is used as a share abstraction to tunnel
+information between libraries or components without those libraries or components needing to be aware
+of what is being tunneled. It is a practical hack, and care should be used to avoid using it except where
+it is needed. Examples of context propagation include request ids, timeouts, and shared cancellations.
 
-A `Ctx` (henceforth referred to as a context) has objects, usually data, associated with it via a typed `Key<T>`. This is the mechanism for propagating context within a process (say from incoming request to outgoing request). It will have some standard mechanism to convert it to a map or such to put it into headers. Individual context objects are immutable, with associating a key creating a new context rather than mutating an existing one. This is designed to encourage thread safety and being explicit about passing them around.
-
-A context can be associated with a thread. There is built in support for this, and additional thread locals should be generally be avoided.
-
-Contexts have limited lifecycle support. Basically, they are `ALIVE`, `CANCELLED`, or `FINISHED`. A context starts `ALIVE` and can transition to either `CANCELLED` or `FINISHED`. You can register listeners with a context and those listeners will be notified when the context transitions state.
-
-There is deadline functionality associated with a context -- basically you can set a deadline, on a scheduled executor, which will cause the state to transition to `CANCELLED` if the deadline occurs before the context transitions to `FINISHED`. You can query the approximate time remaining until the deadline from the context (approximate because it is measured in nanoseconds, and some will elapse querying the time and reading it).
-
-Finally, a context is hierarchical. You can create a child context of a context and the children will share associated data (from the time of their creation) and lifecycle transitions (at any point) with the parent. A child can undergo lifecycle transitions independently of the parent, but a parent transitioning will also transition all children. This feature is to allow seperate contexts to be created to track child RPCs, or other independently cancellable activies, but be able to cancel or finish them from the root.
-
-# Why Conflate?
-
-`Ctx` conflates three things right now, contextual data (request id, etc), request lifecycle handling, and timeout management. It would seem that this might be two too many things.
-
-They key thing is that lifecycle state (and triggers on that state change) and timeout management (and triggers on that state change( *are* contextual data. It would be very possible to refactor these two things into plugin type pieces of active data, and possibly this should happen, except these are two things needed on *every* request exchange, so putting them on directly is simply an affordance to make things easier for users.
-
-# Thread Attachement, huh?
-
-There are two primary paths for propagating context, the first is purely explicit. In this model anything which needs context data must have it explicitly passed. The second is implicit via thread locals -- in this anything which needs context data pulls it from global thread locals.
-
-Explicit propagation is generally preferred -- be explicit in what you need! Explicit propagation also allows for child contexts, and finer grained control over context within a thread (such as in event driven situations). However, explicit propagation can make many libraries and frameworks, which don't have baked in support for explicit context passing, awkward to use. In practice, we need some mechanism for implicit context passing, even if we prefer explicit propagation.
-
-Attachment *is* a hack to allow implicit propagation that is needed to tunnel through libraries.
-
-Note that a `CtxAttachment` is `AutoCloseable` so can be used with try-with-resources. Given that attachment is thread bound, this should be the normal way attachment is used.
+Ctx is heavily influenced by Golang's `context` package.
 
 # Using `Ctx`
+
+## Timeouts and cancelations
+
+The most common application level use of Ctx is to handle high level timeouts and cancellations. Cancellation allows
+a coordinated cancellation of arbitrary downstream operations. For example, if there are three concurrent API calls
+being made, and they must ALL succeed for any to succeed, the cancellation functionality can be used when one fails
+to trigger cancellation on the other two. To accomplish this, you will want to create a child context of the
+current context, then pass that child context to the operations which you want to provide coordinated cancellation for.
+
+Timeouts are just a cancellation on a timer. Because it is the most common coordinated cancellation, direct support
+exists in Ctx to support it. After the timeout has elapsed, the context will be cancelled.
+
+## Ctx Lifecycle
+
+A Ctx is `alive` or `cancelled`. By default, a ctx is `alive`. if it is cancelled, it becomes cancelled. Once a context
+has been cancelled, it remains cancelled.
+
+Multiple contexts can share the same liveness, and transition at the same time. A context derived from another by adding a value to it is a "peer" to the context from which it was derived. A context created via `createChild` is a child. Peer contexts share the same liveness, and cancellation propagates to child contexts, but not up to parent contexts. This mechanism allows for hierarchical cancellation, and for contexts which are manipulated after being created to not lose their coordinated liveness.
+
+If a context with the same values, but an independent lifecycle is needed, this can be created via `Ctx#newRoot()`.
+
+## Thread Attachment
+
+Because one of the key purposes of a context is to tunnel information between libraries, contexts support
+being attached to threads. The correct way to use this is to call `Ctx#attachToThread()` to attach a particular
+context to the current thread, then `Ctx#close()` to later detach it. The best way to do this is either in a try-with-resources block, or `Ctx#runAttached` which will attach and clean up a Ctx. It is crucial to note that
+_only_ a context attached to the current thread may be closed, closing an unattached one will raise an `IllegalStateException`. If a thread must be cleaned up when there is no reference to the context available, the state method `Ctx.cleanThread()` may be used. It is better to use `Ctx#close()` however.
+
+## Propagating Context
+
+Because context often needs to propagate across threads we have convenience methods to assist with this. `Ctx` has
+a static method to wrap an `ExecutorService` such that any context bound to a thread submitting a job will be
+propagated onto the thread executing the job.
+
+Similarly, there are instance methods to wrap `Runnable` and `Callable` instances so that they will have that specific
+context bound to the thread they are eventually executed on. These wrappers restore any pre-existing context
+to the thread after execution.
 
 ## Server Side
 
 - Propagate context at the earliest reasonable point from incoming requests into a `Ctx`.
 - Prefer passing `Ctx` explicitely rather than infecting the current thread.
 - If explicit is not possible, infect the current thread and document that this happens!
-- Finish (`Ctx#finish`) requests when they are finished, to prevent scheduled cancellations from executing.
 
 ## Clients
 
