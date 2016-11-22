@@ -83,15 +83,11 @@ public class Ctx implements AutoCloseable {
     }
 
     public void runAttached(final Runnable r) {
-        try (Ctx ignored = attachToThread()) {
-            r.run();
-        }
+        this.propagate(r).run();
     }
 
     public <T> T callAttached(final Callable<T> c) throws Exception {
-        try (Ctx ignored = attachToThread()) {
-            return c.call();
-        }
+        return this.propagate(c).call();
     }
 
     public <T> Ctx with(final Key<T> key, final T value) {
