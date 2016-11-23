@@ -10,14 +10,14 @@
 
     <artifactId>jtier-ctx</artifactId>
     <packaging>jar</packaging>
-    <version>0.2.1</version>
+    <version>0.3.0-SNAPSHOT</version>
     <name>Ctx</name>
 
     <scm>
         <connection>scm:git:github:jtier/jtier-ctx.git</connection>
         <developerConnection>scm:git:github:jtier/jtier-ctx.git</developerConnection>
         <url>https://github.groupondev.com/jtier/jtier-ctx</url>
-        <tag>jtier-ctx-0.2.1</tag>
+        <tag>HEAD</tag>
     </scm>
 
     <properties>
