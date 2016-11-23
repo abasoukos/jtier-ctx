@@ -271,7 +271,9 @@ public class Ctx implements AutoCloseable {
             }
             else {
                 // no pre-existing context on the thread
-                self.runAttached(r);
+                try (Ctx _i = this.attachToThread()) {
+                    r.run();
+                }
             }
         };
     }
@@ -299,7 +301,9 @@ public class Ctx implements AutoCloseable {
             }
             else {
                 // no pre-existing context on the thread
-                return callAttached(r);
+                try (Ctx _i = this.attachToThread()) {
+                    return r.call();
+                }
             }
         };
     }
