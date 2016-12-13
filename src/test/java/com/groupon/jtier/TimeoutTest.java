@@ -15,8 +15,8 @@ public class TimeoutTest {
     public void testTimeoutCancels() throws Exception {
         final ClockedExecutorService clock = new ClockedExecutorService();
 
-        final Ctx ctx = Ctx.empty();
-        ctx.startTimeout(1, TimeUnit.SECONDS, clock);
+        final Ctx p = Ctx.empty();
+        Ctx ctx = p.withTimeout(1, TimeUnit.SECONDS, clock);
 
         clock.advance(2, TimeUnit.SECONDS).get();
         assertThat(ctx.isCancelled()).isTrue();
@@ -24,15 +24,15 @@ public class TimeoutTest {
 
     @Test
     public void testTimeoutMilliseconds() throws Exception {
-        Ctx.empty().startTimeout(1, TimeUnit.MILLISECONDS);
+        Ctx.empty().withTimeout(1, TimeUnit.MILLISECONDS);
     }
 
     @Test
     public void testTimeRemaining() throws Exception {
         final ClockedExecutorService clock = new ClockedExecutorService();
 
-        final Ctx ctx = Ctx.empty();
-        ctx.startTimeout(100, TimeUnit.DAYS, clock);
+        final Ctx p = Ctx.empty();
+        Ctx ctx = p.withTimeout(100, TimeUnit.DAYS, clock);
 
         Thread.sleep(10);
         final Optional<Duration> tr = ctx.getApproximateTimeRemaining();
