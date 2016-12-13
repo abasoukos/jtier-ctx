@@ -137,33 +137,35 @@ public class Ctx implements AutoCloseable {
     /**
      * Ctx will be cancelled when the timeout is reached. If a previous timeout was set this will replace it.
      */
-    public void startTimeout(final long time, final TimeUnit unit, final ScheduledExecutorService scheduler) {
-        this.life.startTimeout(time, unit, scheduler);
+    public Ctx withTimeout(final long time, final TimeUnit unit, final ScheduledExecutorService scheduler) {
+        Ctx child = this.createChild();
+        child.life.startTimeout(time, unit, scheduler);
+        return child;
     }
 
     /**
      * Ctx will be cancelled when the timeout is reached. If a previous timeout was set this will replace it.
      */
-    public void startTimeout(final long time, final TimeUnit unit) {
-        startTimeout(time, unit, TIMEOUT_POOL);
+    public void withTimeout(final long time, final TimeUnit unit) {
+        withTimeout(time, unit, TIMEOUT_POOL);
     }
 
     /**
      * Ctx will be cancelled when the timeout is reached. If a previous timeout was set this will replace it.
      */
-    public void startTimeout(final Duration d) {
-        startTimeout(d, TIMEOUT_POOL);
+    public void withTimeout(final Duration d) {
+        withTimeout(d, TIMEOUT_POOL);
     }
 
     /**
      * Ctx will be cancelled when the timeout is reached. If a previous timeout was set this will replace it.
      */
-    public void startTimeout(final Duration d, final ScheduledExecutorService scheduler) {
+    public void withTimeout(final Duration d, final ScheduledExecutorService scheduler) {
         if (d.getNano() == 0) {
-            startTimeout(d.getSeconds(), TimeUnit.SECONDS, scheduler);
+            withTimeout(d.getSeconds(), TimeUnit.SECONDS, scheduler);
         }
         else {
-            startTimeout(TimeUnit.SECONDS.toNanos(d.getSeconds()) + d.getNano(), TimeUnit.NANOSECONDS, scheduler);
+            withTimeout(TimeUnit.SECONDS.toNanos(d.getSeconds()) + d.getNano(), TimeUnit.NANOSECONDS, scheduler);
         }
     }
 
