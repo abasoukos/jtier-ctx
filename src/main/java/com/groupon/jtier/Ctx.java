@@ -135,7 +135,7 @@ public class Ctx implements AutoCloseable {
     }
 
     /**
-     * Ctx will be cancelled when the timeout is reached. If a previous timeout was set this will replace it.
+     * Create a child Ctx will be cancelled when the timeout is reached. If a previous timeout was set this will replace it.
      */
     public Ctx withTimeout(final long time, final TimeUnit unit, final ScheduledExecutorService scheduler) {
         Ctx child = this.createChild();
@@ -144,21 +144,21 @@ public class Ctx implements AutoCloseable {
     }
 
     /**
-     * Ctx will be cancelled when the timeout is reached. If a previous timeout was set this will replace it.
+     * Create a child Ctx will be cancelled when the timeout is reached. If a previous timeout was set this will replace it.
      */
     public void withTimeout(final long time, final TimeUnit unit) {
         withTimeout(time, unit, TIMEOUT_POOL);
     }
 
     /**
-     * Ctx will be cancelled when the timeout is reached. If a previous timeout was set this will replace it.
+     * Create a child Ctx will be cancelled when the timeout is reached. If a previous timeout was set this will replace it.
      */
     public void withTimeout(final Duration d) {
         withTimeout(d, TIMEOUT_POOL);
     }
 
     /**
-     * Ctx will be cancelled when the timeout is reached. If a previous timeout was set this will replace it.
+     * Create a child Ctx will be cancelled when the timeout is reached. If a previous timeout was set this will replace it.
      */
     public void withTimeout(final Duration d, final ScheduledExecutorService scheduler) {
         if (d.getNano() == 0) {
