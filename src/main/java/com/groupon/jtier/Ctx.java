@@ -75,7 +75,12 @@ public class Ctx implements AutoCloseable {
      */
     public Ctx attachToThread() {
         final Optional<Ctx> previouslyAttached = ATTACHED.get();
-        previouslyAttached.ifPresent(Ctx::close);
+        if (previouslyAttached.isPresent()) {
+            if (previouslyAttached.get() == this) {
+                return this;
+            }
+            previouslyAttached.get().close();
+        }
 
         ATTACHED.set(Optional.of(this));
         this.attachListeners.forEach(Runnable::run);
